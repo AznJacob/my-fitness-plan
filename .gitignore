@@ -1,6 +1,72 @@
 # Environment variables and secrets
 .env
 .env.*
+!.env.example
+!.env.*.example
 
-# Codex instructions kept locally
+# Python
+__pycache__/
+*.py[cod]
+*.pyd
+*.so
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# Node and frontend tooling
+node_modules/
+.npm/
+.yarn/
+.pnpm-store/
+.eslintcache
+*.tsbuildinfo
+coverage/
+frontend/dist/
+frontend/build/
+.vite/
+
+# Logs and runtime files
+*.log
+*.pid
+logs/
+
+# Local databases and Docker bind-mounted data
+*.db
+*.sqlite
+*.sqlite3
+postgres-data/
+postgres_data/
+
+# IDE and editor state
+.idea/
+.vscode/
+*.code-workspace
+*.swp
+*.swo
+*~
+
+# Operating-system metadata
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Local tooling state
+.codex/
+.agents/
 AGENTS.md
+
+# Temporary files
+.cache/
+tmp/
+temp/
