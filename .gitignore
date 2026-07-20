@@ -1,0 +1,6 @@
+# Environment variables and secrets
+.env
+.env.*
+
+# Codex instructions kept locally
+AGENTS.md
