@@ -4,7 +4,7 @@ MyFitnessPlan is a research-grounded general wellness application that will crea
 
 The project is being built incrementally as an end-to-end Solutions Engineer portfolio project. It is intended to demonstrate requirements analysis, full-stack development, identity, API integration, data persistence, security, testing, deployment, monitoring, documentation, and technical communication.
 
-> **Project status:** Initial repository setup. The capabilities described below are planned and should not be considered implemented until their corresponding milestones are completed and tested.
+> **Project status:** Milestones 1 and 2 are complete. The repository contains verified minimal FastAPI and React/TypeScript applications. Milestone 3, the Dockerized application and PostgreSQL environment, is next. The remaining capabilities described below are planned and should not be considered implemented until their corresponding milestones are completed and tested.
 
 ## Product scope
 
@@ -39,13 +39,14 @@ Potentially unsafe inputs and generated outputs must be validated. Appropriate d
 
 ```text
 my-fitness-plan/
-|-- backend/             # FastAPI application and backend tests
-|-- frontend/            # React application and frontend tests
+|-- backend/
+|   |-- app/             # FastAPI application
+|   `-- tests/           # Backend tests
+|-- frontend/
+|   `-- src/             # React application source
 |-- docker-compose.yaml  # Local services (planned)
 `-- README.md
 ```
-
-The application directories are currently placeholders. Their internal structures will be introduced with the backend and frontend initialization milestones.
 
 ## Development roadmap
 
@@ -68,17 +69,39 @@ A milestone is complete only when its behavior is implemented, tested, documente
 
 ## Local development
 
-Application startup commands will be documented after the Python and Node applications are initialized in Milestone 2. Development tooling can be installed now:
+Install the backend and its development tools from the repository root:
 
-```powershell
+```bash
 cd backend
 python -m pip install -e ".[dev]"
-
-cd ..\frontend
-npm.cmd install
 ```
 
-On Windows, `npm.cmd` avoids PowerShell execution-policy errors that can prevent the `npm.ps1` wrapper from running.
+Start the FastAPI development server from `backend/`:
+
+```bash
+python -m uvicorn app.main:app --reload
+```
+
+The local backend is then available at:
+
+- Health check: `http://127.0.0.1:8000/health`
+- Interactive API documentation: `http://127.0.0.1:8000/docs`
+- OpenAPI schema: `http://127.0.0.1:8000/openapi.json`
+
+Install the frontend tooling from the repository root:
+
+```bash
+cd frontend
+npm install
+```
+
+Start the Vite development server from `frontend/`:
+
+```bash
+npm run dev
+```
+
+The local frontend is then available at `http://127.0.0.1:5173/`.
 
 The current development toolchain is:
 
@@ -94,7 +117,7 @@ Configuration will be supplied through environment variables. Committable `.env.
 
 Run backend checks from `backend/`:
 
-```powershell
+```bash
 python -m ruff format --check .
 python -m ruff check .
 python -m mypy .
@@ -103,12 +126,14 @@ python -m pytest
 
 Run frontend checks from `frontend/`:
 
-```powershell
-npm.cmd run format:check
-npm.cmd run lint
+```bash
+npm run format:check
+npm run lint
+npm run typecheck
+npm run build
 ```
 
-TypeScript type checking will be added with the React application and its `tsconfig.json` in Milestone 2. Editor extensions may surface these tools while code is being written, but the commands above are the repository's reproducible checks.
+Editor extensions may surface these tools while code is being written, but the commands above are the repository's reproducible checks.
 
 ## Engineering principles
 
