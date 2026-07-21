@@ -26,7 +26,7 @@ Potentially unsafe inputs and generated outputs must be validated. Appropriate d
 
 ## Planned technology stack
 
-- React frontend
+- React frontend using TypeScript
 - FastAPI backend using Python and Pydantic
 - PostgreSQL
 - Docker Compose for local development
@@ -41,7 +41,6 @@ Potentially unsafe inputs and generated outputs must be validated. Appropriate d
 my-fitness-plan/
 |-- backend/             # FastAPI application and backend tests
 |-- frontend/            # React application and frontend tests
-|-- docs/                # Architecture and engineering documentation
 |-- docker-compose.yaml  # Local services (planned)
 `-- README.md
 ```
@@ -69,17 +68,47 @@ A milestone is complete only when its behavior is implemented, tested, documente
 
 ## Local development
 
-Local setup commands are not available yet. They will be documented here after the Python and Node projects and Docker services have been initialized.
+Application startup commands will be documented after the Python and Node applications are initialized in Milestone 2. Development tooling can be installed now:
+
+```powershell
+cd backend
+python -m pip install -e ".[dev]"
+
+cd ..\frontend
+npm.cmd install
+```
+
+On Windows, `npm.cmd` avoids PowerShell execution-policy errors that can prevent the `npm.ps1` wrapper from running.
 
 The current development toolchain is:
 
 - Python 3.14.6 (the backend accepts compatible Python 3.14 patch releases)
 - Node.js 24.18.0 LTS (the frontend accepts compatible Node.js 24 releases)
-- npm 11
+- npm 11.16.0
 
 The exact development defaults are recorded in `.python-version` and `.nvmrc`. The supported ranges are enforced by `backend/pyproject.toml` and `frontend/package.json`. Docker will become the canonical reproducible environment when the container milestone is implemented.
 
 Configuration will be supplied through environment variables. Committable `.env.example` files will document required variable names using placeholder values; real `.env` files and credentials must never be committed.
+
+### Code quality checks
+
+Run backend checks from `backend/`:
+
+```powershell
+python -m ruff format --check .
+python -m ruff check .
+python -m mypy .
+python -m pytest
+```
+
+Run frontend checks from `frontend/`:
+
+```powershell
+npm.cmd run format:check
+npm.cmd run lint
+```
+
+TypeScript type checking will be added with the React application and its `tsconfig.json` in Milestone 2. Editor extensions may surface these tools while code is being written, but the commands above are the repository's reproducible checks.
 
 ## Engineering principles
 
@@ -93,10 +122,6 @@ Configuration will be supplied through environment variables. Committable `.env.
 - Handle database and external API failures explicitly.
 - Prefer meaningful behavior tests over implementation-detail tests.
 - Keep secrets out of source control and logs.
-
-## Documentation
-
-Architecture decisions, data models, authentication flows, security considerations, and operational guidance will live in `docs/` as those parts of the system are designed and implemented.
 
 ## Contributing workflow
 
