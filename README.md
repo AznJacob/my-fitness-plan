@@ -4,13 +4,13 @@ MyFitnessPlan is a research-grounded general wellness application that will crea
 
 The project is being built incrementally as an end-to-end Solutions Engineer portfolio project. It is intended to demonstrate requirements analysis, full-stack development, identity, API integration, data persistence, security, testing, deployment, monitoring, documentation, and technical communication.
 
-> **Project status:** Milestones 1 and 2 are complete. The repository contains verified minimal FastAPI and React/TypeScript applications. Milestone 3, the Dockerized application and PostgreSQL environment, is next. The remaining capabilities described below are planned and should not be considered implemented until their corresponding milestones are completed and tested.
+> **Project status:** Milestones 1 through 3 are complete. The repository contains verified FastAPI and React/TypeScript applications running with PostgreSQL through Docker Compose. Milestone 4, database schema and migrations, is next. The remaining capabilities described below are planned and should not be considered implemented until their corresponding milestones are completed and tested.
 
 ## Product scope
 
 The planned workflow is:
 
-1. A user signs in with Microsoft Entra ID.
+1. A user signs in with an email and password or Google Sign-In.
 2. The backend creates or retrieves the corresponding PostgreSQL user record.
 3. The user submits fitness goals, experience, availability, equipment, dietary preferences, and relevant constraints.
 4. FastAPI performs deterministic calculations and retrieves relevant fitness research.
@@ -30,21 +30,24 @@ Potentially unsafe inputs and generated outputs must be validated. Appropriate d
 - FastAPI backend using Python and Pydantic
 - PostgreSQL
 - Docker Compose for local development
-- Microsoft Entra ID using OAuth 2.0 and OpenID Connect
+- First-party email and password authentication
+- Google Sign-In using OAuth 2.0 and OpenID Connect
 - Anthropic Claude API
 - pgvector and retrieval-augmented generation in a later milestone
-- Optional Microsoft Graph integration after the core product is complete
 
 ## Repository structure
 
 ```text
 my-fitness-plan/
 |-- backend/
-|   |-- app/             # FastAPI application
-|   `-- tests/           # Backend tests
+|   |-- app/              # FastAPI application
+|   |-- tests/            # Backend tests
+|   `-- Dockerfile        # Backend development image
 |-- frontend/
-|   `-- src/             # React application source
-|-- docker-compose.yaml  # Local services (planned)
+|   |-- src/              # React application source
+|   `-- Dockerfile        # Frontend development image
+|-- docker-compose.yaml   # Local development services
+|-- .env.example          # Committable configuration template
 `-- README.md
 ```
 
@@ -56,7 +59,7 @@ Development follows small, dependency-ordered milestones:
 2. Minimal FastAPI and React applications
 3. Dockerized application and PostgreSQL environment
 4. Database schema and migrations
-5. Microsoft Entra ID authentication
+5. First-party email/password and Google authentication
 6. User profile persistence
 7. Deterministic wellness calculations
 8. Schema-validated Claude integration
@@ -67,7 +70,56 @@ Development follows small, dependency-ordered milestones:
 
 A milestone is complete only when its behavior is implemented, tested, documented, and manually verified. Later capabilities should not be described as complete prematurely.
 
-## Local development
+## Docker development environment
+
+Docker Compose is the canonical local development environment. It starts the React frontend,
+FastAPI backend, and PostgreSQL database with health checks and persistent database storage.
+
+From the repository root, create your ignored local environment file:
+
+```bash
+cp .env.example .env
+```
+
+Replace `POSTGRES_PASSWORD` in `.env` with a local development password. Do not commit `.env`.
+
+Build and start the stack:
+
+```bash
+docker compose up --build
+```
+
+When all services are healthy, they are available at:
+
+- Frontend: `http://localhost:5173`
+- Backend health check: `http://localhost:8000/health`
+- Backend API documentation: `http://localhost:8000/docs`
+- PostgreSQL: `localhost:5433` by default (`5432` inside the Compose network)
+
+Inspect service state and health:
+
+```bash
+docker compose ps
+```
+
+Stop the containers without deleting PostgreSQL data:
+
+```bash
+docker compose down
+```
+
+To intentionally reset the local database, remove the named volume:
+
+```bash
+docker compose down --volumes
+```
+
+The volume deletion command permanently removes local PostgreSQL data. Database schema and
+application-level database access will be added in milestone 4.
+
+## Host-based local development
+
+Running directly on the host remains useful for focused development and quality checks.
 
 Install the backend and its development tools from the repository root:
 
@@ -109,7 +161,7 @@ The current development toolchain is:
 - Node.js 24.18.0 LTS (the frontend accepts compatible Node.js 24 releases)
 - npm 11.16.0
 
-The exact development defaults are recorded in `.python-version` and `.nvmrc`. The supported ranges are enforced by `backend/pyproject.toml` and `frontend/package.json`. Docker will become the canonical reproducible environment when the container milestone is implemented.
+The exact development defaults are recorded in `.python-version` and `.nvmrc`. The supported ranges are enforced by `backend/pyproject.toml` and `frontend/package.json`.
 
 Configuration will be supplied through environment variables. Committable `.env.example` files will document required variable names using placeholder values; real `.env` files and credentials must never be committed.
 
@@ -142,7 +194,9 @@ Editor extensions may surface these tools while code is being written, but the c
 - Use Python type hints and Pydantic models at external boundaries.
 - Perform deterministic calculations in Python rather than in LLM prompts.
 - Validate all user input and all model output.
-- Derive identity and authorization from validated access tokens, never frontend claims.
+- Store only securely hashed passwords, never plaintext credentials.
+- Validate Google identity tokens on the backend rather than trusting frontend claims.
+- Keep authorization and resource ownership tied to one application user regardless of sign-in method.
 - Use database migrations for schema changes.
 - Handle database and external API failures explicitly.
 - Prefer meaningful behavior tests over implementation-detail tests.
