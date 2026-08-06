@@ -82,6 +82,8 @@ cp .env.example .env
 ```
 
 Replace `POSTGRES_PASSWORD` in `.env` with a local development password. Do not commit `.env`.
+Docker Compose constructs the backend's `DATABASE_URL` from these values and uses the internal
+`postgres:5432` service address. FastAPI verifies that connection before startup completes.
 
 Build and start the stack:
 
@@ -114,8 +116,8 @@ To intentionally reset the local database, remove the named volume:
 docker compose down --volumes
 ```
 
-The volume deletion command permanently removes local PostgreSQL data. Database schema and
-application-level database access will be added in milestone 4.
+The volume deletion command permanently removes local PostgreSQL data. Database tables and
+migrations are added incrementally during milestone 4.
 
 ## Host-based local development
 
@@ -130,9 +132,13 @@ python -m pip install -e ".[dev]"
 
 Start the FastAPI development server from `backend/`:
 
-```bash
+```powershell
+$env:DATABASE_URL = "postgresql+psycopg://myfitnessplan:your-password@localhost:5433/myfitnessplan"
 python -m uvicorn app.main:app --reload
 ```
+
+When FastAPI runs on the host, PostgreSQL must already be running and the URL uses the published
+`localhost:5433` address. The application stops during startup if the database is unavailable.
 
 The local backend is then available at:
 

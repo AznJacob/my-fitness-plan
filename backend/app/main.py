@@ -1,7 +1,40 @@
+import logging
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from pydantic import BaseModel
+from sqlalchemy.exc import SQLAlchemyError
 
-app = FastAPI(title="MyFitnessPlan Backend")
+from app.config import load_settings
+from app.database import create_database_engine, verify_database_connection
+
+logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(application: FastAPI) -> AsyncIterator[None]:
+    """Own the database engine for the lifetime of the FastAPI application."""
+    settings = load_settings()
+    engine = create_database_engine(settings)
+
+    try:
+        verify_database_connection(engine)
+    except SQLAlchemyError:
+        engine.dispose()
+        logger.exception("PostgreSQL connectivity check failed during application startup")
+        raise
+
+    application.state.database_engine = engine
+
+    try:
+        yield
+    finally:
+        engine.dispose()
+        del application.state.database_engine
+
+
+app = FastAPI(title="MyFitnessPlan Backend", lifespan=lifespan)
 
 
 class HealthResponse(BaseModel):
