@@ -4,7 +4,7 @@ MyFitnessPlan is a research-grounded general wellness application that will crea
 
 The project is being built incrementally as an end-to-end Solutions Engineer portfolio project. It is intended to demonstrate requirements analysis, full-stack development, identity, API integration, data persistence, security, testing, deployment, monitoring, documentation, and technical communication.
 
-> **Project status:** Milestones 1 through 3 are complete. The repository contains verified FastAPI and React/TypeScript applications running with PostgreSQL through Docker Compose. Milestone 4, database schema and migrations, is next. The remaining capabilities described below are planned and should not be considered implemented until their corresponding milestones are completed and tested.
+> **Project status:** Milestones 1 through 4 are complete. The repository contains verified FastAPI and React/TypeScript applications, PostgreSQL connectivity, an initial relational schema, and tested Alembic migrations. Milestone 5, first-party and Google authentication, is next. The remaining capabilities described below are planned and should not be considered implemented until their corresponding milestones are completed and tested.
 
 ## Product scope
 
@@ -41,6 +41,7 @@ Potentially unsafe inputs and generated outputs must be validated. Appropriate d
 my-fitness-plan/
 |-- backend/
 |   |-- app/              # FastAPI application
+|   |-- migrations/       # Versioned Alembic database schema changes
 |   |-- tests/            # Backend tests
 |   `-- Dockerfile        # Backend development image
 |-- frontend/
@@ -69,6 +70,24 @@ Development follows small, dependency-ordered milestones:
 12. Security, testing, CI/CD, deployment, and monitoring
 
 A milestone is complete only when its behavior is implemented, tested, documented, and manually verified. Later capabilities should not be described as complete prematurely.
+
+## Initial database model
+
+The milestone 4 SQLAlchemy metadata defines four PostgreSQL tables:
+
+- `users` provides the application-owned identity shared by all sign-in methods.
+- `authentication_identities` links one password and/or one Google identity to a user. It stores
+  password hashes only for password identities and never stores plaintext passwords or Google
+  tokens.
+- `profiles` stores one current set of general-wellness planning preferences per user.
+- `plans` stores validated workout and nutrition JSON documents with the profile snapshot that
+  produced them. Relational ownership and status columns enforce lifecycle rules, including at
+  most one active plan per user.
+
+Foreign keys delete dependent private data with their owning user. Matching email addresses do
+not link accounts; future authentication code must verify provider credentials and require
+reauthentication before linking identities. Initial revision `7768cfd3a397` creates and removes
+these tables and has been tested against a disposable empty PostgreSQL database.
 
 ## Docker development environment
 
@@ -116,8 +135,70 @@ To intentionally reset the local database, remove the named volume:
 docker compose down --volumes
 ```
 
-The volume deletion command permanently removes local PostgreSQL data. Database tables and
-migrations are added incrementally during milestone 4.
+The volume deletion command permanently removes local PostgreSQL data.
+
+## Database migrations
+
+Run migration commands through the backend container from the repository root. Start PostgreSQL
+first; Compose waits for its health check before running Alembic:
+
+```bash
+docker compose up -d postgres
+docker compose build backend
+```
+
+Inspect the revision chain, available head, currently applied revision, and model/schema drift:
+
+```bash
+docker compose run --rm backend python -m alembic -c alembic.ini history
+docker compose run --rm backend python -m alembic -c alembic.ini heads
+docker compose run --rm backend python -m alembic -c alembic.ini current
+docker compose run --rm backend python -m alembic -c alembic.ini check
+```
+
+Upgrade the database to the newest committed revision:
+
+```bash
+docker compose run --rm backend python -m alembic -c alembic.ini upgrade head
+```
+
+After changing SQLAlchemy metadata, generate and then review a proposed revision before applying
+it:
+
+```bash
+docker compose run --rm backend python -m alembic -c alembic.ini revision --autogenerate -m "describe schema change"
+```
+
+Downgrade one revision with `downgrade -1`. Downgrading this project's initial revision to `base`
+drops all four application tables and permanently deletes any data in them, so use it only when
+that data can safely be discarded:
+
+```bash
+docker compose run --rm backend python -m alembic -c alembic.ini downgrade -1
+docker compose run --rm backend python -m alembic -c alembic.ini downgrade base
+```
+
+PostgreSQL may retain an empty `alembic_version` bookkeeping table at `base`; this is normal. Run
+`upgrade head` again after a local downgrade to restore a usable development schema.
+
+Run the complete backend suite, including the isolated empty-database migration test:
+
+```bash
+docker compose --profile test run --rm --build backend-test
+```
+
+The test creates a uniquely named disposable database, applies all migrations, inspects the
+resulting revision, tables, foreign keys, indexes, and metadata alignment, and removes that test
+database without modifying normal development data.
+
+The initial migration was manually verified on August 6, 2026 with this sequence:
+
+```text
+base -> upgrade head -> inspect -> downgrade base -> inspect -> upgrade head -> alembic check
+```
+
+The final local state is revision `7768cfd3a397 (head)` with `users`,
+`authentication_identities`, `profiles`, and `plans` present.
 
 ## Host-based local development
 

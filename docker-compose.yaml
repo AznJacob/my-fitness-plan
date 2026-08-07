@@ -22,6 +22,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      target: runtime
     environment:
       DATABASE_URL: >-
         postgresql+psycopg://${POSTGRES_USER:?Set POSTGRES_USER in .env}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:?Set POSTGRES_DB in .env}
@@ -39,6 +40,8 @@ services:
       - "127.0.0.1:${BACKEND_PORT:-8000}:8000"
     volumes:
       - ./backend/app:/app/app:ro
+      - ./backend/alembic.ini:/app/alembic.ini:ro
+      - ./backend/migrations:/app/migrations
     depends_on:
       postgres:
         condition: service_healthy
@@ -54,6 +57,19 @@ services:
       timeout: 5s
       retries: 10
       start_period: 10s
+
+  backend-test:
+    profiles: ["test"]
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: test
+    environment:
+      TEST_DATABASE_ADMIN_URL: >-
+        postgresql+psycopg://${POSTGRES_USER:?Set POSTGRES_USER in .env}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   frontend:
     build:

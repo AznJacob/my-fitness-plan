@@ -1,0 +1,3 @@
+Alembic migration environment for the MyFitnessPlan PostgreSQL schema.
+
+Revision files live in versions/ and must be reviewed before they are applied.

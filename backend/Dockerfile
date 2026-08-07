@@ -1,4 +1,4 @@
-FROM python:3.14.6-slim-bookworm
+FROM python:3.14.6-slim-bookworm AS base
 
 ENV PYTHONUNBUFFERED=1
 
@@ -10,8 +10,26 @@ COPY app ./app
 RUN python -m pip install --no-cache-dir .
 
 RUN addgroup --system app && \
-    adduser --system --ingroup app app && \
-    chown -R app:app /app
+    adduser --system --ingroup app app
+
+FROM base AS test
+
+RUN python -m pip install --no-cache-dir ".[dev]"
+
+COPY alembic.ini ./
+COPY migrations ./migrations
+COPY tests ./tests
+
+RUN chown -R app:app /app
+
+USER app
+
+CMD ["python", "-m", "pytest", "-p", "no:cacheprovider"]
+
+FROM base AS runtime
+
+COPY alembic.ini ./
+COPY migrations ./migrations
 
 USER app
 
