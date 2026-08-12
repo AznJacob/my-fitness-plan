@@ -9,6 +9,7 @@ def test_initial_schema_registers_expected_tables() -> None:
         "authentication_identities",
         "plans",
         "profiles",
+        "sessions",
         "users",
     }
 
@@ -22,7 +23,7 @@ def test_initial_schema_compiles_for_postgresql() -> None:
 
 
 def test_ownership_foreign_keys_delete_dependent_data() -> None:
-    for table_name in ("authentication_identities", "profiles", "plans"):
+    for table_name in ("authentication_identities", "profiles", "plans", "sessions"):
         foreign_keys = Base.metadata.tables[table_name].foreign_keys
         assert len(foreign_keys) == 1
         foreign_key = next(iter(foreign_keys))
@@ -59,3 +60,31 @@ def test_authentication_schema_enforces_identity_safety_constraints() -> None:
     assert (
         str(password_email_index.dialect_options["postgresql"]["where"]) == "provider = 'password'"
     )
+
+
+def test_users_enforce_unique_normalized_email() -> None:
+    users = Base.metadata.tables["users"]
+    constraint_names = {constraint.name for constraint in users.constraints}
+
+    assert "ck_users_normalized_email" in constraint_names
+    assert "uq_users_normalized_email" in constraint_names
+    assert users.c.normalized_email.nullable is False
+
+
+def test_sessions_store_fixed_length_token_hashes_and_lifecycle_indexes() -> None:
+    sessions = Base.metadata.tables["sessions"]
+    constraint_names = {constraint.name for constraint in sessions.constraints}
+    indexes = {str(index.name): index for index in sessions.indexes}
+
+    assert {
+        "ck_sessions_token_hash_length",
+        "ck_sessions_csrf_token_hash_length",
+        "ck_sessions_expiration",
+        "ck_sessions_revocation",
+    } <= constraint_names
+    assert indexes["uq_sessions_token_hash"].unique is True
+    assert {"ix_sessions_user_id", "ix_sessions_expires_at"} <= indexes.keys()
+    assert sessions.c.token_hash.nullable is False
+    assert sessions.c.csrf_token_hash.nullable is False
+    assert sessions.c.expires_at.nullable is False
+    assert sessions.c.revoked_at.nullable is True

@@ -16,18 +16,23 @@ def test_health_endpoint_returns_ok_status_after_database_startup(
         "postgresql+psycopg://app_user:secret@postgres:5432/myfitnessplan",
     )
     engine = Mock(spec=Engine)
+    session_factory = Mock()
     create_engine = Mock(return_value=engine)
+    create_session_factory = Mock(return_value=session_factory)
     verify_connection = Mock()
     monkeypatch.setattr(main, "create_database_engine", create_engine)
+    monkeypatch.setattr(main, "create_database_session_factory", create_session_factory)
     monkeypatch.setattr(main, "verify_database_connection", verify_connection)
 
     with TestClient(main.app) as client:
+        assert main.app.state.database_session_factory is session_factory
         response = client.get("/health")
 
     assert response.status_code == 200
     assert response.json() == {"status": "ok", "service": "my-fitness-plan-backend"}
     create_engine.assert_called_once()
     verify_connection.assert_called_once_with(engine)
+    create_session_factory.assert_called_once_with(engine)
     engine.dispose.assert_called_once_with()
 
 

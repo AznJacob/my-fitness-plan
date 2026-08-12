@@ -4,7 +4,12 @@ MyFitnessPlan is a research-grounded general wellness application that will crea
 
 The project is being built incrementally as an end-to-end Solutions Engineer portfolio project. It is intended to demonstrate requirements analysis, full-stack development, identity, API integration, data persistence, security, testing, deployment, monitoring, documentation, and technical communication.
 
-> **Project status:** Milestones 1 through 4 are complete. The repository contains verified FastAPI and React/TypeScript applications, PostgreSQL connectivity, an initial relational schema, and tested Alembic migrations. Milestone 5, first-party and Google authentication, is next. The remaining capabilities described below are planned and should not be considered implemented until their corresponding milestones are completed and tested.
+> **Project status:** Milestones 1 through 4 are complete. Milestone 5 is in progress:
+> its authentication architecture, typed configuration, canonical account-email constraint, and
+> database-backed session schema are implemented. Request-scoped database transactions are also in
+> place. Authentication endpoints and browser sign-in are not yet implemented. The remaining
+> capabilities described below are planned and should not be considered implemented until their
+> corresponding milestones are completed and tested.
 
 ## Product scope
 
@@ -71,23 +76,27 @@ Development follows small, dependency-ordered milestones:
 
 A milestone is complete only when its behavior is implemented, tested, documented, and manually verified. Later capabilities should not be described as complete prematurely.
 
-## Initial database model
+## Database model
 
-The milestone 4 SQLAlchemy metadata defines four PostgreSQL tables:
+The SQLAlchemy metadata currently defines five PostgreSQL tables:
 
-- `users` provides the application-owned identity shared by all sign-in methods.
+- `users` provides the application-owned identity shared by all sign-in methods and owns a unique
+  canonical normalized email.
 - `authentication_identities` links one password and/or one Google identity to a user. It stores
   password hashes only for password identities and never stores plaintext passwords or Google
   tokens.
+- `sessions` stores user ownership, SHA-256 session and CSRF token digests, absolute expiration,
+  revocation, and lifecycle timestamps. Raw tokens exist only in browser cookies.
 - `profiles` stores one current set of general-wellness planning preferences per user.
 - `plans` stores validated workout and nutrition JSON documents with the profile snapshot that
   produced them. Relational ownership and status columns enforce lifecycle rules, including at
   most one active plan per user.
 
-Foreign keys delete dependent private data with their owning user. Matching email addresses do
-not link accounts; future authentication code must verify provider credentials and require
-reauthentication before linking identities. Initial revision `7768cfd3a397` creates and removes
-these tables and has been tested against a disposable empty PostgreSQL database.
+Foreign keys delete dependent private data with their owning user. Matching email addresses do not
+link accounts; future authentication code must verify provider credentials and require
+reauthentication before linking identities. Initial revision `7768cfd3a397` creates the milestone 4
+schema. Revision `b2f7c91d4e63` adds canonical emails and sessions. The complete revision chain is
+tested against a disposable empty PostgreSQL database, including model/schema drift detection.
 
 ## Docker development environment
 
@@ -197,8 +206,8 @@ The initial migration was manually verified on August 6, 2026 with this sequence
 base -> upgrade head -> inspect -> downgrade base -> inspect -> upgrade head -> alembic check
 ```
 
-The final local state is revision `7768cfd3a397 (head)` with `users`,
-`authentication_identities`, `profiles`, and `plans` present.
+The current migration head is `b2f7c91d4e63`, with `users`, `authentication_identities`,
+`sessions`, `profiles`, and `plans` present after upgrade.
 
 ## Host-based local development
 
@@ -251,6 +260,12 @@ The current development toolchain is:
 The exact development defaults are recorded in `.python-version` and `.nvmrc`. The supported ranges are enforced by `backend/pyproject.toml` and `frontend/package.json`.
 
 Configuration will be supplied through environment variables. Committable `.env.example` files will document required variable names using placeholder values; real `.env` files and credentials must never be committed.
+
+The milestone 5 authentication design is recorded in
+[`docs/authentication-architecture.md`](docs/authentication-architecture.md). It defines the planned
+opaque-session, cookie, CORS, CSRF, expiration, and Google/email-collision behavior. The document is
+an implementation contract; authentication is not complete until the later milestone 5 stages are
+implemented and verified.
 
 ### Code quality checks
 
