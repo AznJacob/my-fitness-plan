@@ -4,13 +4,6 @@ MyFitnessPlan is a research-grounded general wellness application that will crea
 
 The project is being built incrementally as an end-to-end Solutions Engineer portfolio project. It is intended to demonstrate requirements analysis, full-stack development, identity, API integration, data persistence, security, testing, deployment, monitoring, documentation, and technical communication.
 
-> **Project status:** Milestones 1 through 4 are complete. Milestone 5 is in progress:
-> its authentication architecture, typed configuration, canonical account-email constraint, and
-> database-backed session schema are implemented. Request-scoped database transactions are also in
-> place. Authentication endpoints and browser sign-in are not yet implemented. The remaining
-> capabilities described below are planned and should not be considered implemented until their
-> corresponding milestones are completed and tested.
-
 ## Product scope
 
 The planned workflow is:
@@ -263,9 +256,67 @@ Configuration will be supplied through environment variables. Committable `.env.
 
 The milestone 5 authentication design is recorded in
 [`docs/authentication-architecture.md`](docs/authentication-architecture.md). It defines the planned
-opaque-session, cookie, CORS, CSRF, expiration, and Google/email-collision behavior. The document is
-an implementation contract; authentication is not complete until the later milestone 5 stages are
-implemented and verified.
+opaque-session, cookie, CORS, CSRF, expiration, and Google/email-collision behavior. Email/password
+registration, login, logout, current-user lookup, reusable session protection, the basic React
+authentication flow, and Google Sign-In are implemented and verified for the local portfolio
+environment. This does not make the authentication system production-ready.
+
+The local API exposes:
+
+- `GET /auth/csrf` to issue the browser-readable double-submit CSRF cookie.
+- `POST /auth/register` and `POST /auth/login` to establish an opaque HttpOnly cookie session.
+- `POST /auth/google` to validate a Google ID token and establish the same application session.
+- `POST /auth/logout` to validate CSRF, revoke the current session, and clear its cookies.
+- `GET /auth/me` to restore authenticated user state without exposing the session token.
+- `GET /protected` as the minimal example of a route available to any authenticated user.
+
+State-changing authentication requests must come from `http://localhost:5173` or
+`http://127.0.0.1:5173`, include cookies, and copy the `mfp_csrf` cookie into the
+`X-CSRF-Token` header. The backend permits credentialed CORS only from those two local origins and
+marks API responses `Cache-Control: no-store`. The Stage 7 frontend performs this flow without ever
+reading or storing `mfp_session`.
+
+To test the current browser flow, start the stack and apply migrations:
+
+```bash
+docker compose up -d --build
+docker compose exec backend python -m alembic -c alembic.ini upgrade head
+```
+
+Open `http://localhost:5173`, register with a valid email and a password containing at least eight
+characters, and confirm the signed-in account view appears. Refresh to verify `/auth/me` restores
+the session, then log out and verify the login form returns. You can then log in with the same
+credentials. The forms intentionally use basic browser styling until the main application features
+are complete.
+
+### Local Google Sign-In setup
+
+Follow Google's [Google Identity Services setup guide](https://developers.google.com/identity/gsi/web/guides/get-google-api-clientid)
+to configure OAuth branding and create an OAuth 2.0 client with application type **Web application**.
+Add these exact Authorized JavaScript origins:
+
+```text
+http://localhost
+http://localhost:5173
+http://127.0.0.1:5173
+```
+
+Copy `.env.example` to the ignored root `.env` file and set `GOOGLE_CLIENT_ID` to the resulting Web
+client ID. A client ID is a public identifier; do not add or commit a Google client secret because
+this flow does not use one. Recreate the backend and frontend so both receive the same ID:
+
+```bash
+docker compose up -d --build --force-recreate backend frontend
+```
+
+The simple authentication screen will then show Google's standard button. A Google account whose
+normalized email is already claimed by a password account is deliberately rejected. Automatic
+linking based only on matching email could allow account takeover; secure linking is deferred to
+milestone 6.
+
+The automated security coverage, manual checks, scope decisions, and deferred deployment
+protections are recorded in
+[`docs/authentication-verification.md`](docs/authentication-verification.md).
 
 ### Code quality checks
 

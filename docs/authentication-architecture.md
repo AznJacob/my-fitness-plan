@@ -1,7 +1,8 @@
 # Authentication architecture
 
-This document records the security design for milestone 5. It is an implementation contract, not
-a claim that authentication is complete or production-ready.
+This document records the implemented security design for milestone 5. The authentication milestone
+is complete for the documented local portfolio environment; it is not a claim of production
+readiness.
 
 ## Trust boundaries
 
@@ -13,7 +14,7 @@ authenticated user may access.
 ## Application-controlled sessions
 
 Both password and Google sign-in establish the same database-backed opaque session. The backend
-will generate at least 256 random bits with Python's `secrets` module. The raw token is returned only
+generates 256 random bits with Python's `secrets` module. The raw token is returned only
 in a cookie; PostgreSQL stores only its SHA-256 digest. A fast digest is appropriate because this
 token is uniformly random and unguessable. Human-chosen passwords require a deliberately slow,
 memory-hard Argon2id hash instead.
@@ -31,17 +32,18 @@ served over local HTTP; JavaScript still cannot read the session cookie. React s
 `credentials: "include"` and never copies the session token into JavaScript storage. Any future
 HTTPS deployment must set `SESSION_COOKIE_SECURE=true` before it can be considered safe.
 
-SameSite is defense in depth rather than the only CSRF control. Before authentication, a CSRF
-bootstrap endpoint will issue a random non-HttpOnly cookie; registration, login, and Google sign-in
+SameSite is defense in depth rather than the only CSRF control. Before authentication,
+`GET /auth/csrf` issues a random non-HttpOnly cookie; registration, login, and Google sign-in
 require the identical value in `X-CSRF-Token` (the double-submit pattern). After authentication, a
 fresh CSRF token replaces it, its digest is stored with the new session, and unsafe authenticated
 requests must echo the raw cookie value in the same header. The backend will also require an exact
 allowed `Origin`. Logout and all later state-changing endpoints use these protections; safe HTTP
-methods never change state. Authentication and protected responses use `Cache-Control: no-store`.
+methods never change state. All API responses use `Cache-Control: no-store` so authentication data
+cannot be reused from a browser or intermediary cache.
 
-CORS permits credentials only for configured exact frontend origins. Wildcard origins, methods, and
-headers are not used. The current application permits both `http://localhost:5173` and
-`http://127.0.0.1:5173`. The API will explicitly allow only the methods and headers it needs,
+CORS permits credentials only for exact frontend origins. Wildcard origins, methods, and headers
+are not used. This local-only application permits both `http://localhost:5173` and
+`http://127.0.0.1:5173`. The API explicitly allows only the methods and headers it needs,
 including `Content-Type` and `X-CSRF-Token`.
 
 ## Session expiration and rotation
@@ -66,44 +68,106 @@ therefore confined to one request.
 
 ## Password authentication
 
-Email input will be validated and normalized before lookup. Passwords will be hashed with a vetted
-Argon2id implementation and never stored or logged in plaintext. Login will perform a dummy password
-hash verification when no password identity exists and return the same generic failure for an
-unknown email and a wrong password, reducing account-enumeration and timing signals.
+Email input is parsed with `email-validator`, normalized, and converted to a lowercase canonical
+lookup value before database access. Leading and trailing whitespace is removed. DNS deliverability
+checks are intentionally disabled because this milestone does not send verification email and login
+must not depend on network access. SMTPUTF8 local parts are not accepted so canonical lowercasing is
+predictable with the current PostgreSQL constraint.
+
+New passwords must contain 8 through 128 characters. The application does not trim passwords or
+require uppercase letters, numbers, or symbols; passphrases, whitespace, and Unicode are accepted.
+Passwords are hashed by `pwdlib` with Argon2id using 19 MiB of memory, two iterations, one lane, and
+a unique random salt. Verification can return an upgraded hash if those parameters change later.
+
+Login performs an Argon2id verification against a fixed non-secret dummy hash when no password
+identity exists. Unknown accounts and wrong passwords receive the same generic response, while both
+paths perform expensive password work to reduce timing-based account discovery.
+Malformed stored hashes fail closed. Plaintext passwords are never stored or logged.
+
+## First-party authentication API
+
+`POST /auth/register` validates the submitted email and password, then creates the application user,
+password identity, and first session in one request transaction. The service performs a friendly
+email-collision check and the database uniqueness constraints remain the final defense against
+concurrent registrations. A successful response contains only the user ID and canonical email; the
+opaque session token is returned only through the HttpOnly cookie.
+
+`POST /auth/login` returns the same `401 Invalid email or password` response for unknown accounts
+and incorrect passwords. A successful login upgrades an outdated Argon2id hash when necessary and
+creates a fresh independent application session. It does not reuse a caller-supplied identifier.
+
+`POST /auth/logout` requires the active session plus its matching CSRF token, revokes that session,
+and expires both browser cookies. `GET /auth/me` resolves a valid, unexpired, unrevoked cookie
+session to its application user. Authentication failures do not reveal whether a session once
+existed.
+
+The reusable `CurrentSession` dependency validates the opaque token and loads its database row.
+`CurrentUser` builds on it and gives protected routes the application-owned user without duplicating
+cookie or session queries. `GET /protected` demonstrates authentication: any signed-in user may call
+it. Authorization is a separate decision about what that user may do, such as requiring a plan's
+`user_id` to equal the authenticated user's ID; ownership authorization belongs with the future
+resource endpoints.
+
+Tokens are accepted only in their canonical 43-character URL-safe form before hashing and querying
+PostgreSQL. Missing, malformed, unknown, expired, and revoked session cookies all return the same
+generic `401 Authentication required` response.
+
+## Frontend authentication state
+
+React wraps the application in a small `AuthProvider`. On startup it calls `GET /auth/me` with
+`credentials: "include"`; a valid cookie restores the user after a refresh, while `401` selects the
+unauthenticated view. Successful registration and login place the safe user response in memory.
+Logout revokes the backend session and returns the application to the login form.
+
+The frontend API client reads only the non-HttpOnly `mfp_csrf` cookie so it can echo that value in
+`X-CSRF-Token`. It cannot read `mfp_session`, and it never copies authentication state into local or
+session storage. The API hostname follows the Vite page hostname so cookies work consistently when
+the local application is opened through either `localhost` or `127.0.0.1`.
 
 ## Google identity policy
 
-The frontend will use Google Identity Services and send its ID token to FastAPI. The backend will
-use Google's supported Python library to validate signature, audience, issuer, expiration, verified
-identity claims, and the immutable `sub`. Only `(provider="google", provider_subject=sub)` identifies
-a returning Google user; an email address is not a stable provider identifier.
+The frontend loads Google Identity Services directly from `accounts.google.com` and renders its
+standard button. The GIS callback sends the returned ID token to `POST /auth/google`; React does not
+decode, persist, or log it. The endpoint has the same Origin and double-submit CSRF requirements as
+password login.
+
+The backend uses Google's supported `google-auth` Python library to validate the token signature,
+audience, issuer, and expiration. It then independently requires the configured audience, an
+accepted Google issuer, a future expiration, a non-empty immutable `sub`, a valid email, and the
+boolean `email_verified=true` claim. Only `(provider="google", provider_subject=sub)` identifies a
+returning Google user; an email address is not a stable provider identifier. Failure to fetch
+Google's public signing keys produces a temporary-unavailability response rather than accepting an
+unverified token.
 
 Matching emails never cause automatic linking:
 
-- An existing Google `sub` signs in to its existing user.
-- A new Google `sub` with an unclaimed normalized email creates a user and Google identity in one
-  transaction.
+- An existing Google `sub` signs in to its existing user and receives a fresh application session.
+- A new Google `sub` with an unclaimed normalized email creates a user, Google identity, and session
+  in one transaction.
 - A new Google `sub` whose normalized email is already claimed is rejected without creating data.
 - Password registration whose normalized email is already claimed by any provider is also rejected.
 - Responses do not reveal which provider owns an existing email.
 
 Secure identity linking requires an authenticated session plus reauthentication and belongs to
-milestone 6. To make concurrent cross-provider registrations safe at the database boundary, stage 2
-adds a required, unique canonical normalized email to `users`. Every identity linked to a user must
-represent that canonical email. The service layer will still perform friendly pre-insert collision
-checks, while the unique constraint is the final defense against races.
+milestone 6. The required, unique canonical normalized email on `users` makes concurrent
+cross-provider registrations safe at the database boundary. Every identity linked to a user must
+represent that canonical email. The service layer performs a friendly pre-insert collision check,
+while the unique constraint is the final defense against races.
 
 ## Typed configuration
 
-The backend validates exact CORS origins, a bounded session lifetime, the cookie `Secure` flag, and
-an optional Google client ID at startup. The settings model stays focused on values the application
+The backend validates a bounded session lifetime, the cookie `Secure` flag, and an optional Google
+client ID at startup. The two exact CORS origins are application constants because this project has
+one documented local environment. The settings model stays focused on values the application
 actually consumes. Secrets and connection strings are excluded from settings representations.
-Google configuration remains optional until stage 8 so the earlier password-authentication stages
-can run independently.
+Google configuration remains optional so password authentication runs independently. When a Web
+client ID is supplied, Docker Compose passes the same public identifier to GIS and FastAPI. No
+Google client secret is used or required for this ID-token sign-in flow.
 
 ## Deferred production protections
 
 Milestone 5 will not by itself make authentication production-ready. Deployment work still needs
 TLS termination and trusted-proxy configuration, rate limiting, credential-stuffing monitoring,
-secret rotation, session-row retention/cleanup, security headers, dependency and image scanning,
-audit logging that excludes credentials, alerting, backups, and an incident-response process.
+password-email ownership verification, secret rotation, session-row retention/cleanup, security
+headers, dependency and image scanning, audit logging that excludes credentials, alerting, backups,
+and an incident-response process.
