@@ -17,6 +17,7 @@ def valid_claims() -> dict[str, Any]:
         "aud": "test-client-id",
         "iss": "https://accounts.google.com",
         "exp": time() + 300,
+        "iat": time(),
         "sub": "google-subject-123",
         "email": "Person@Example.com",
         "email_verified": True,
@@ -41,6 +42,7 @@ def test_google_library_verification_uses_expected_audience_and_claims(
     assert identity.subject == "google-subject-123"
     assert identity.email == "Person@example.com"
     assert identity.normalized_email == "person@example.com"
+    assert identity.issued_at <= time()
 
 
 @pytest.mark.parametrize(
@@ -49,6 +51,7 @@ def test_google_library_verification_uses_expected_audience_and_claims(
         ("aud", "wrong-client"),
         ("iss", "https://issuer.example"),
         ("exp", 0),
+        ("iat", True),
         ("sub", ""),
         ("email", "not-an-email"),
         ("email_verified", False),

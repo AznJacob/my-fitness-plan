@@ -133,11 +133,11 @@ password login.
 
 The backend uses Google's supported `google-auth` Python library to validate the token signature,
 audience, issuer, and expiration. It then independently requires the configured audience, an
-accepted Google issuer, a future expiration, a non-empty immutable `sub`, a valid email, and the
-boolean `email_verified=true` claim. Only `(provider="google", provider_subject=sub)` identifies a
-returning Google user; an email address is not a stable provider identifier. Failure to fetch
-Google's public signing keys produces a temporary-unavailability response rather than accepting an
-unverified token.
+accepted Google issuer, a future expiration, a valid issued-at time, a non-empty immutable `sub`, a
+valid email, and the boolean `email_verified=true` claim. Only
+`(provider="google", provider_subject=sub)` identifies a returning Google user; an email address is
+not a stable provider identifier. Failure to fetch Google's public signing keys produces a
+temporary-unavailability response rather than accepting an unverified token.
 
 Matching emails never cause automatic linking:
 
@@ -148,11 +148,18 @@ Matching emails never cause automatic linking:
 - Password registration whose normalized email is already claimed by any provider is also rejected.
 - Responses do not reveal which provider owns an existing email.
 
-Secure identity linking requires an authenticated session plus reauthentication and belongs to
-milestone 6. The required, unique canonical normalized email on `users` makes concurrent
-cross-provider registrations safe at the database boundary. Every identity linked to a user must
-represent that canonical email. The service layer performs a friendly pre-insert collision check,
-while the unique constraint is the final defense against races.
+Secure identity linking uses separate milestone 6 endpoints. Both require an authenticated session
+and session-bound CSRF token. A password user links Google only after submitting the current
+password and a valid Google ID token issued within five minutes; the Google identity must represent
+the user's canonical email. A Google user links a new password only after submitting a Google ID
+token issued within five minutes whose immutable subject is already owned by that application user.
+The new password is validated and Argon2id-hashed before storage.
+
+Neither path authorizes a link from email equality alone. A Google subject already owned by another
+user is never reassigned. The service performs explicit ownership checks, while the unique
+provider-subject and per-user/provider constraints remain the final defense against concurrent
+races. `GET /auth/methods` reports the connected methods for the authenticated user without exposing
+credential details.
 
 ## Typed configuration
 

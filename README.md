@@ -2,8 +2,6 @@
 
 MyFitnessPlan is a research-grounded general wellness application that will create personalized workout and nutrition plans from a user's goals, experience, availability, equipment, dietary preferences, and relevant constraints.
 
-The project is being built incrementally as an end-to-end Solutions Engineer portfolio project. It is intended to demonstrate requirements analysis, full-stack development, identity, API integration, data persistence, security, testing, deployment, monitoring, documentation, and technical communication.
-
 ## Product scope
 
 The planned workflow is:
@@ -85,11 +83,12 @@ The SQLAlchemy metadata currently defines five PostgreSQL tables:
   produced them. Relational ownership and status columns enforce lifecycle rules, including at
   most one active plan per user.
 
-Foreign keys delete dependent private data with their owning user. Matching email addresses do not
-link accounts; future authentication code must verify provider credentials and require
-reauthentication before linking identities. Initial revision `7768cfd3a397` creates the milestone 4
-schema. Revision `b2f7c91d4e63` adds canonical emails and sessions. The complete revision chain is
-tested against a disposable empty PostgreSQL database, including model/schema drift detection.
+Foreign keys delete dependent private data with their owning user. Matching email addresses never
+link accounts by themselves. Explicit linking requires an authenticated session, session-bound
+CSRF validation, and fresh proof of the already connected method. Initial revision
+`7768cfd3a397` creates the milestone 4 schema. Revision `b2f7c91d4e63` adds canonical emails and
+sessions. The complete revision chain is tested against a disposable empty PostgreSQL database,
+including model/schema drift detection.
 
 ## Docker development environment
 
@@ -268,7 +267,20 @@ The local API exposes:
 - `POST /auth/google` to validate a Google ID token and establish the same application session.
 - `POST /auth/logout` to validate CSRF, revoke the current session, and clear its cookies.
 - `GET /auth/me` to restore authenticated user state without exposing the session token.
+- `GET /auth/methods` to list the current user's connected password and Google methods.
+- `POST /auth/link/google` to link Google after fresh password and Google verification.
+- `POST /auth/link/password` to link a password after fresh verification of the owned Google
+  subject.
 - `GET /protected` as the minimal example of a route available to any authenticated user.
+- `GET /profile` to retrieve the signed-in user's saved planning preferences.
+- `PUT /profile` to create or replace those preferences with session-bound CSRF protection.
+
+Profile ownership is derived only from the authenticated application session. Profile requests do
+not accept a user ID, so a client cannot select or update another user's row. A missing profile
+returns `404`; users create their initial profile with the same `PUT` used for later replacements.
+The authenticated React view loads this profile on entry, renders a basic create or edit form, and
+saves through the shared credentialed API client with session-bound CSRF protection. List fields use
+one item per line. This flow captures preferences only; it does not generate a plan.
 
 State-changing authentication requests must come from `http://localhost:5173` or
 `http://127.0.0.1:5173`, include cookies, and copy the `mfp_csrf` cookie into the
@@ -310,9 +322,10 @@ docker compose up -d --build --force-recreate backend frontend
 ```
 
 The simple authentication screen will then show Google's standard button. A Google account whose
-normalized email is already claimed by a password account is deliberately rejected. Automatic
-linking based only on matching email could allow account takeover; secure linking is deferred to
-milestone 6.
+normalized email is already claimed by a password account is deliberately rejected during normal
+sign-in. Automatic linking based only on matching email could allow account takeover; linking is a
+separate authenticated and freshly reauthenticated operation. Its React UI is part of milestone 6
+and is not implemented yet.
 
 The automated security coverage, manual checks, scope decisions, and deferred deployment
 protections are recorded in

@@ -1,6 +1,7 @@
 from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from time import time
 
 import pytest
 from alembic import command
@@ -337,6 +338,7 @@ def test_google_sign_in_creates_identity_and_application_session(
             subject="google-subject-123",
             email="person@example.com",
             normalized_email="person@example.com",
+            issued_at=time(),
         ),
     )
 
@@ -368,6 +370,7 @@ def test_returning_google_subject_reuses_user_and_issues_fresh_session(
             subject="google-subject-123",
             email="person@example.com",
             normalized_email="person@example.com",
+            issued_at=time(),
         ),
     )
     first_response = google_sign_in(auth_client)
@@ -399,6 +402,7 @@ def test_google_email_collision_does_not_link_password_account(
             subject="new-google-subject",
             email="person@example.com",
             normalized_email="person@example.com",
+            issued_at=time(),
         ),
     )
 
@@ -461,6 +465,7 @@ def test_password_registration_cannot_claim_existing_google_email(
             subject="google-subject-123",
             email="person@example.com",
             normalized_email="person@example.com",
+            issued_at=time(),
         ),
     )
     assert google_sign_in(auth_client).status_code == 200

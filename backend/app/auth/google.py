@@ -29,12 +29,14 @@ class VerifiedGoogleIdentity:
     subject: str
     email: str
     normalized_email: str
+    issued_at: float
 
 
 def _required_claims(claims: dict[str, Any], client_id: str) -> VerifiedGoogleIdentity:
     subject = claims.get("sub")
     email_claim = claims.get("email")
     expiration = claims.get("exp")
+    issued_at = claims.get("iat")
 
     valid_expiration = (
         isinstance(expiration, (int, float))
@@ -45,6 +47,9 @@ def _required_claims(claims: dict[str, Any], client_id: str) -> VerifiedGoogleId
         claims.get("aud") != client_id
         or claims.get("iss") not in _GOOGLE_ISSUERS
         or not valid_expiration
+        or not isinstance(issued_at, (int, float))
+        or isinstance(issued_at, bool)
+        or issued_at > time() + 30
         or claims.get("email_verified") is not True
         or not isinstance(subject, str)
         or not subject
@@ -62,6 +67,7 @@ def _required_claims(claims: dict[str, Any], client_id: str) -> VerifiedGoogleId
         subject=subject,
         email=email.address,
         normalized_email=email.normalized,
+        issued_at=float(issued_at),
     )
 
 

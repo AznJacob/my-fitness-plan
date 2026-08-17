@@ -15,15 +15,30 @@ from app.auth.dependencies import (
 from app.auth.google import (
     GoogleVerificationUnavailableError,
     InvalidGoogleTokenError,
+    VerifiedGoogleIdentity,
     verify_google_id_token,
 )
-from app.auth.schemas import GoogleLoginRequest, LoginRequest, RegistrationRequest, UserResponse
+from app.auth.schemas import (
+    ConnectedMethodsResponse,
+    GoogleLoginRequest,
+    LinkGoogleRequest,
+    LinkPasswordRequest,
+    LoginRequest,
+    RegistrationRequest,
+    UserResponse,
+)
 from app.auth.service import (
     GoogleAccountConflictError,
+    IdentityAlreadyLinkedError,
+    IdentityLinkConflictError,
     InvalidCredentialsError,
     InvalidEmailError,
     InvalidPasswordError,
+    ReauthenticationFailedError,
     RegistrationConflictError,
+    get_connected_methods,
+    link_google_identity,
+    link_password_identity,
     login_user,
     register_user,
     revoke_session,
@@ -156,3 +171,103 @@ def current_user(
     user: CurrentUser,
 ) -> UserResponse:
     return _user_response(user.id, user.normalized_email)
+
+
+@router.get("/methods", response_model=ConnectedMethodsResponse)
+def connected_methods(
+    user: CurrentUser,
+    database_session: DatabaseSession,
+) -> ConnectedMethodsResponse:
+    methods = get_connected_methods(database_session, user.id)
+    return ConnectedMethodsResponse(password="password" in methods, google="google" in methods)
+
+
+def _verified_google_identity(
+    id_token: str,
+    client_id: str | None,
+) -> VerifiedGoogleIdentity:
+    if client_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Google Sign-In is not configured.",
+        )
+    try:
+        return verify_google_id_token(id_token, client_id)
+    except InvalidGoogleTokenError as error:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Fresh reauthentication failed.",
+        ) from error
+    except GoogleVerificationUnavailableError as error:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Google Sign-In is temporarily unavailable.",
+        ) from error
+
+
+@router.post("/link/google", response_model=ConnectedMethodsResponse)
+def link_google(
+    payload: LinkGoogleRequest,
+    database_session: DatabaseSession,
+    settings: ApplicationSettings,
+    user_session: AuthenticatedCsrfSession,
+) -> ConnectedMethodsResponse:
+    google_identity = _verified_google_identity(payload.id_token, settings.google_client_id)
+    try:
+        link_google_identity(
+            database_session,
+            user_session.user,
+            payload.password,
+            google_identity,
+        )
+    except ReauthenticationFailedError as error:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Fresh reauthentication failed.",
+        ) from error
+    except IdentityAlreadyLinkedError as error:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="That sign-in method is already connected.",
+        ) from error
+    except IdentityLinkConflictError as error:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Unable to connect that sign-in method.",
+        ) from error
+    return ConnectedMethodsResponse(password=True, google=True)
+
+
+@router.post("/link/password", response_model=ConnectedMethodsResponse)
+def link_password(
+    payload: LinkPasswordRequest,
+    database_session: DatabaseSession,
+    settings: ApplicationSettings,
+    user_session: AuthenticatedCsrfSession,
+) -> ConnectedMethodsResponse:
+    google_identity = _verified_google_identity(payload.google_id_token, settings.google_client_id)
+    try:
+        link_password_identity(
+            database_session,
+            user_session.user,
+            payload.new_password,
+            google_identity,
+        )
+    except InvalidPasswordError as error:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(error))
+    except ReauthenticationFailedError as error:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Fresh reauthentication failed.",
+        ) from error
+    except IdentityAlreadyLinkedError as error:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="That sign-in method is already connected.",
+        ) from error
+    except IdentityLinkConflictError as error:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Unable to connect that sign-in method.",
+        ) from error
+    return ConnectedMethodsResponse(password=True, google=True)

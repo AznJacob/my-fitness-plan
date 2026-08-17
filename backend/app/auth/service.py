@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -21,6 +22,13 @@ _REGISTRATION_CONSTRAINTS = {
     "uq_authentication_identities_provider_subject",
     "uq_users_normalized_email",
 }
+_IDENTITY_LINK_CONSTRAINTS = {
+    "uq_authentication_identities_password_email",
+    "uq_authentication_identities_provider_subject",
+    "uq_authentication_identities_user_provider",
+}
+_GOOGLE_REAUTHENTICATION_MAX_AGE = timedelta(minutes=5)
+_GOOGLE_REAUTHENTICATION_FUTURE_SKEW = timedelta(seconds=30)
 
 
 class RegistrationConflictError(Exception):
@@ -37,6 +45,18 @@ class AuthenticationRequiredError(Exception):
 
 class GoogleAccountConflictError(Exception):
     """Raised when a new Google identity cannot safely claim its email."""
+
+
+class ReauthenticationFailedError(Exception):
+    """Raised when fresh proof of the current account is absent or invalid."""
+
+
+class IdentityAlreadyLinkedError(Exception):
+    """Raised when the requested provider is already connected to the current user."""
+
+
+class IdentityLinkConflictError(Exception):
+    """Raised when an identity is owned by another user or cannot be linked safely."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -70,6 +90,119 @@ def _create_session(database_session: Session, user: User, lifetime_seconds: int
 def _constraint_name(error: IntegrityError) -> str | None:
     diagnostic = getattr(error.orig, "diag", None)
     return getattr(diagnostic, "constraint_name", None)
+
+
+def _require_fresh_google_identity(google_identity: VerifiedGoogleIdentity) -> None:
+    now = datetime.now(UTC)
+    issued_at = datetime.fromtimestamp(google_identity.issued_at, UTC)
+    if (
+        issued_at < now - _GOOGLE_REAUTHENTICATION_MAX_AGE
+        or issued_at > now + _GOOGLE_REAUTHENTICATION_FUTURE_SKEW
+    ):
+        raise ReauthenticationFailedError
+
+
+def get_connected_methods(database_session: Session, user_id: UUID) -> set[str]:
+    return set(
+        database_session.scalars(
+            select(AuthenticationIdentity.provider).where(AuthenticationIdentity.user_id == user_id)
+        ).all()
+    )
+
+
+def link_google_identity(
+    database_session: Session,
+    user: User,
+    password: str,
+    google_identity: VerifiedGoogleIdentity,
+) -> None:
+    existing_methods = get_connected_methods(database_session, user.id)
+    if "google" in existing_methods:
+        raise IdentityAlreadyLinkedError
+
+    password_identity = database_session.scalar(
+        select(AuthenticationIdentity).where(
+            AuthenticationIdentity.user_id == user.id,
+            AuthenticationIdentity.provider == "password",
+        )
+    )
+    verification = verify_password(
+        password,
+        password_identity.password_hash if password_identity else None,
+    )
+    if password_identity is None or not verification.valid:
+        raise ReauthenticationFailedError
+
+    _require_fresh_google_identity(google_identity)
+    if google_identity.normalized_email != user.normalized_email:
+        raise IdentityLinkConflictError
+    owner_id = database_session.scalar(
+        select(AuthenticationIdentity.user_id).where(
+            AuthenticationIdentity.provider == "google",
+            AuthenticationIdentity.provider_subject == google_identity.subject,
+        )
+    )
+    if owner_id is not None:
+        raise IdentityLinkConflictError
+
+    if verification.updated_hash is not None:
+        password_identity.password_hash = verification.updated_hash
+    database_session.add(
+        AuthenticationIdentity(
+            user=user,
+            provider="google",
+            provider_subject=google_identity.subject,
+            email=google_identity.email,
+            normalized_email=google_identity.normalized_email,
+            email_verified=True,
+            password_hash=None,
+        )
+    )
+    try:
+        database_session.flush()
+    except IntegrityError as error:
+        if _constraint_name(error) in _IDENTITY_LINK_CONSTRAINTS:
+            raise IdentityLinkConflictError from error
+        raise
+
+
+def link_password_identity(
+    database_session: Session,
+    user: User,
+    new_password: str,
+    google_identity: VerifiedGoogleIdentity,
+) -> None:
+    existing_methods = get_connected_methods(database_session, user.id)
+    if "password" in existing_methods:
+        raise IdentityAlreadyLinkedError
+
+    _require_fresh_google_identity(google_identity)
+    google_owner_id = database_session.scalar(
+        select(AuthenticationIdentity.user_id).where(
+            AuthenticationIdentity.provider == "google",
+            AuthenticationIdentity.provider_subject == google_identity.subject,
+        )
+    )
+    if google_owner_id != user.id:
+        raise ReauthenticationFailedError
+
+    database_session.add(
+        AuthenticationIdentity(
+            user=user,
+            provider="password",
+            provider_subject=user.normalized_email,
+            email=user.normalized_email,
+            normalized_email=user.normalized_email,
+            email_verified=False,
+            password_hash=hash_password(new_password),
+        )
+    )
+    try:
+        database_session.flush()
+    except IntegrityError as error:
+        if _constraint_name(error) in _IDENTITY_LINK_CONSTRAINTS:
+            raise IdentityLinkConflictError from error
+        raise
 
 
 def register_user(
@@ -223,13 +356,19 @@ def revoke_session(user_session: UserSession) -> None:
 __all__ = [
     "AuthenticationRequiredError",
     "GoogleAccountConflictError",
+    "IdentityAlreadyLinkedError",
+    "IdentityLinkConflictError",
     "InvalidCredentialsError",
     "InvalidEmailError",
     "InvalidPasswordError",
     "IssuedSession",
     "RegistrationConflictError",
+    "ReauthenticationFailedError",
+    "get_connected_methods",
     "get_authenticated_session",
     "login_user",
+    "link_google_identity",
+    "link_password_identity",
     "register_user",
     "revoke_session",
     "sign_in_with_google",

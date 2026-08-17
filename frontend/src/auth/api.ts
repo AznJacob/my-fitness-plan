@@ -42,7 +42,7 @@ async function errorFromResponse(response: Response): Promise<ApiError> {
   return new ApiError(message, response.status);
 }
 
-async function request(path: string, init: RequestInit = {}): Promise<Response> {
+export async function apiRequest(path: string, init: RequestInit = {}): Promise<Response> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
     credentials: "include",
@@ -57,7 +57,7 @@ async function request(path: string, init: RequestInit = {}): Promise<Response> 
 async function csrfToken(): Promise<string> {
   let token = readCookie(CSRF_COOKIE_NAME);
   if (token === null) {
-    await request("/auth/csrf");
+    await apiRequest("/auth/csrf");
     token = readCookie(CSRF_COOKIE_NAME);
   }
 
@@ -67,10 +67,14 @@ async function csrfToken(): Promise<string> {
   return token;
 }
 
-async function authMutation(path: string, body?: unknown): Promise<Response> {
+export async function csrfProtectedMutation(
+  path: string,
+  method: "POST" | "PUT",
+  body?: unknown,
+): Promise<Response> {
   const token = await csrfToken();
-  return request(path, {
-    method: "POST",
+  return apiRequest(path, {
+    method,
     headers: {
       "X-CSRF-Token": token,
       ...(body === undefined ? {} : { "Content-Type": "application/json" }),
@@ -81,7 +85,7 @@ async function authMutation(path: string, body?: unknown): Promise<Response> {
 
 export async function getCurrentUser(): Promise<AuthenticatedUser | null> {
   try {
-    const response = await request("/auth/me");
+    const response = await apiRequest("/auth/me");
     return (await response.json()) as AuthenticatedUser;
   } catch (error) {
     if (error instanceof ApiError && error.status === 401) {
@@ -92,20 +96,22 @@ export async function getCurrentUser(): Promise<AuthenticatedUser | null> {
 }
 
 export async function register(email: string, password: string): Promise<AuthenticatedUser> {
-  const response = await authMutation("/auth/register", { email, password });
+  const response = await csrfProtectedMutation("/auth/register", "POST", { email, password });
   return (await response.json()) as AuthenticatedUser;
 }
 
 export async function login(email: string, password: string): Promise<AuthenticatedUser> {
-  const response = await authMutation("/auth/login", { email, password });
+  const response = await csrfProtectedMutation("/auth/login", "POST", { email, password });
   return (await response.json()) as AuthenticatedUser;
 }
 
 export async function loginWithGoogle(idToken: string): Promise<AuthenticatedUser> {
-  const response = await authMutation("/auth/google", { id_token: idToken });
+  const response = await csrfProtectedMutation("/auth/google", "POST", {
+    id_token: idToken,
+  });
   return (await response.json()) as AuthenticatedUser;
 }
 
 export async function logout(): Promise<void> {
-  await authMutation("/auth/logout");
+  await csrfProtectedMutation("/auth/logout", "POST");
 }
