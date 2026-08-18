@@ -281,6 +281,8 @@ The local API exposes:
 - `GET /protected` as the minimal example of a route available to any authenticated user.
 - `GET /profile` to retrieve the signed-in user's saved planning preferences.
 - `PUT /profile` to create or replace those preferences with session-bound CSRF protection.
+- `POST /plans/generate` to generate a transient, schema-validated plan from the signed-in user's
+  saved profile after deterministic calculation and input/output safety checks.
 
 Profile ownership is derived only from the authenticated application session. Profile requests do
 not accept a user ID, so a client cannot select or update another user's row. A missing profile
@@ -352,8 +354,13 @@ prompt-section boundaries are documented in
 request is made by Stage 8.1.
 The backend structured-generation service now makes one bounded provider attempt, keeps system and
 data prompt sections separate, and rejects provider failures, malformed JSON, truncated output, and
-schema violations without repair or automatic retry. It is not exposed through an API route yet,
-and no paid Claude request is made by automated verification.
+schema violations without repair or automatic retry. Stage 9.1 exposes that service through a
+session- and CSRF-protected endpoint that accepts no user ID, rejects unsafe profiles before the
+provider call, and checks schema-valid output against deterministic schedule and general-wellness
+boundaries before returning it. The generated result is not persisted yet. The architecture and
+explicitly deferred research/citation work are recorded in
+[`docs/milestone-9-generation-architecture.md`](docs/milestone-9-generation-architecture.md).
+No paid Claude request is made by automated verification.
 
 ### Code quality checks
 
