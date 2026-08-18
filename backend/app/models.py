@@ -288,6 +288,7 @@ class Plan(TimestampMixin, Base):
         nullable=False,
     )
     title: Mapped[str] = mapped_column(String(120), nullable=False)
+    overview: Mapped[str] = mapped_column(String(500), nullable=False)
     status: Mapped[str] = mapped_column(
         String(20),
         nullable=False,

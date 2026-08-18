@@ -68,6 +68,9 @@ Development follows small, dependency-ordered milestones:
 
 A milestone is complete only when its behavior is implemented, tested, documented, and manually verified. Later capabilities should not be described as complete prematurely.
 
+Milestones 1 through 9 are complete. Stage 10.1 now persists schema-validated workout and nutrition
+plans and exposes their protected lifecycle APIs; the React lifecycle experience is next.
+
 ## Database model
 
 The SQLAlchemy metadata currently defines five PostgreSQL tables:
@@ -81,16 +84,18 @@ The SQLAlchemy metadata currently defines five PostgreSQL tables:
   revocation, and lifecycle timestamps. Raw tokens exist only in browser cookies.
 - `profiles` stores one current set of general-wellness planning preferences per user.
 - `plans` stores validated workout and nutrition JSON documents with the profile snapshot that
-  produced them. Relational ownership and status columns enforce lifecycle rules, including at
-  most one active plan per user.
+  produced them, the deterministic values supplied during generation, and the generated overview.
+  Relational ownership and status columns enforce lifecycle rules, including at most one active
+  plan per user.
 
 Foreign keys delete dependent private data with their owning user. Matching email addresses never
 link accounts by themselves. Explicit linking requires an authenticated session, session-bound
 CSRF validation, and fresh proof of the already connected method. Initial revision
 `7768cfd3a397` creates the milestone 4 schema. Revision `b2f7c91d4e63` adds canonical emails and
 sessions. Revision `8d4f6a2c1b90` constrains profile session availability to the 10-180 minute
-general-wellness planning range. The complete revision chain is tested against a disposable empty
-PostgreSQL database, including model/schema drift detection.
+general-wellness planning range. Revision `c7e91a4b2d65` adds storage for the validated plan
+overview. The complete revision chain is tested against a disposable empty PostgreSQL database,
+including model/schema drift detection.
 
 ## Docker development environment
 
@@ -205,7 +210,7 @@ The initial migration was manually verified on August 6, 2026 with this sequence
 base -> upgrade head -> inspect -> downgrade base -> inspect -> upgrade head -> alembic check
 ```
 
-The current migration head is `8d4f6a2c1b90`, with `users`, `authentication_identities`,
+The current migration head is `c7e91a4b2d65`, with `users`, `authentication_identities`,
 `sessions`, `profiles`, and `plans` present after upgrade.
 
 ## Host-based local development
@@ -281,8 +286,13 @@ The local API exposes:
 - `GET /protected` as the minimal example of a route available to any authenticated user.
 - `GET /profile` to retrieve the signed-in user's saved planning preferences.
 - `PUT /profile` to create or replace those preferences with session-bound CSRF protection.
-- `POST /plans/generate` to generate a transient, schema-validated plan from the signed-in user's
-  saved profile after deterministic calculation and input/output safety checks.
+- `POST /plans/generate` to generate a schema-validated plan from the signed-in user's saved
+  profile after deterministic calculation and input/output safety checks, then persist it as
+  inactive with its generation snapshot.
+- `GET /plans` to list the signed-in user's plan history.
+- `GET /plans/{plan_id}` to retrieve one complete owned plan and its profile/calculation snapshot.
+- `POST /plans/{plan_id}/activate` to transactionally select one non-archived active plan.
+- `POST /plans/{plan_id}/archive` to archive an owned plan permanently.
 
 Profile ownership is derived only from the authenticated application session. Profile requests do
 not accept a user ID, so a client cannot select or update another user's row. A missing profile
@@ -357,8 +367,8 @@ data prompt sections separate, and rejects provider failures, malformed JSON, tr
 schema violations without repair or automatic retry. Stage 9.1 exposes that service through a
 session- and CSRF-protected endpoint that accepts no user ID, rejects unsafe profiles before the
 provider call, and checks schema-valid output against deterministic schedule and general-wellness
-boundaries before returning it. The generated result is not persisted yet. The architecture and
-explicitly deferred research/citation work are recorded in
+boundaries before returning it. Stage 10.1 now persists that validated result. The generation
+architecture and explicitly deferred research/citation work are recorded in
 [`docs/milestone-9-generation-architecture.md`](docs/milestone-9-generation-architecture.md).
 No paid Claude request is made by automated verification.
 
@@ -370,8 +380,17 @@ Authenticated frontend workflows now use simple browser-history routes:
 - `/profile` creates or edits the saved planning profile.
 - `/account` manages connected password and Google sign-in methods.
 
-The Stage 9.2 generated plan exists only in browser memory. Refreshing intentionally clears it;
-database persistence and plan history are deferred to Milestone 10.
+The Stage 9.2 view still holds its displayed result in browser memory, but Stage 10.1 now persists
+newly generated plans in PostgreSQL. React history, detail, active-plan, and archive views belong to
+Stage 10.2.
+
+Milestone 9 is complete. The protected workflow derives profile ownership from the authenticated
+session, runs deterministic safety assessment and calculations before Claude, validates structured
+provider output, applies a second generated-content safety gate, and presents the resulting plan in
+React. Automated checks mock Claude and do not consume API credits. Research retrieval, pgvector,
+and citations are not implemented, and the application is not production-ready. Stage 10.1 plan
+persistence and lifecycle architecture is documented in
+[`docs/milestone-10-plan-lifecycle.md`](docs/milestone-10-plan-lifecycle.md).
 
 ### Code quality checks
 

@@ -9,7 +9,7 @@ from alembic.config import Config
 from sqlalchemy import create_engine, inspect, text
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
-MIGRATION_HEAD = "8d4f6a2c1b90"
+MIGRATION_HEAD = "c7e91a4b2d65"
 
 
 @pytest.mark.integration
@@ -54,6 +54,8 @@ def test_upgrade_head_builds_expected_schema_from_empty_database(
 
         plan_indexes = {index["name"]: index for index in inspector.get_indexes("plans")}
         assert plan_indexes["uq_plans_one_active_per_user"]["unique"] is True
+        plan_columns = {column["name"]: column for column in inspector.get_columns("plans")}
+        assert plan_columns["overview"]["nullable"] is False
 
         user_columns = {column["name"]: column for column in inspector.get_columns("users")}
         assert user_columns["normalized_email"]["nullable"] is False
@@ -145,5 +147,54 @@ def test_session_migration_backfills_canonical_email_for_existing_user(
             ).scalar_one()
 
         assert normalized_email == "person@example.com"
+    finally:
+        engine.dispose()
+
+
+@pytest.mark.integration
+def test_plan_overview_migration_backfills_existing_plans(
+    empty_database_url: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("DATABASE_URL", empty_database_url)
+    alembic_config = Config(str(BACKEND_ROOT / "alembic.ini"))
+    engine = create_engine(empty_database_url)
+    user_id = uuid4()
+    plan_id = uuid4()
+
+    try:
+        command.upgrade(alembic_config, "8d4f6a2c1b90")
+        with engine.begin() as connection:
+            connection.execute(
+                text(
+                    "INSERT INTO users (id, normalized_email) "
+                    "VALUES (:user_id, 'migration@example.com')"
+                ),
+                {"user_id": user_id},
+            )
+            connection.execute(
+                text(
+                    """
+                    INSERT INTO plans (
+                        id, user_id, title, profile_snapshot, workout_plan, nutrition_plan
+                    ) VALUES (
+                        :plan_id, :user_id, 'Legacy plan', '{}'::jsonb, '{}'::jsonb, '{}'::jsonb
+                    )
+                    """
+                ),
+                {"plan_id": plan_id, "user_id": user_id},
+            )
+
+        command.upgrade(alembic_config, "head")
+
+        with engine.connect() as connection:
+            overview = connection.execute(
+                text("SELECT overview FROM plans WHERE id = :plan_id"),
+                {"plan_id": plan_id},
+            ).scalar_one()
+
+        assert overview == "Generated general-wellness plan."
+        plan_columns = {column["name"]: column for column in inspect(engine).get_columns("plans")}
+        assert plan_columns["overview"]["nullable"] is False
     finally:
         engine.dispose()

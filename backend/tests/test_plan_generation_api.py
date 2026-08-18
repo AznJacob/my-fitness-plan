@@ -159,15 +159,31 @@ def test_generation_uses_authenticated_profile_and_calculations(
 
     response = generation_client.post("/plans/generate", headers=csrf_headers(generation_client))
 
-    assert response.status_code == 200
-    assert response.json() == valid_generated_plan().model_dump(mode="json")
+    assert response.status_code == 201
+    response_body = response.json()
+    generated_plan = valid_generated_plan().model_dump(mode="json")
+    for field_name, value in generated_plan.items():
+        assert response_body[field_name] == value
+    assert response_body["status"] == "inactive"
+    assert response_body["archived_at"] is None
+    assert response_body["profile_snapshot"]["profile"] == valid_profile()
+    assert response_body["profile_snapshot"]["calculated_values"] == {
+        "calculation_version": 1,
+        "sessions_per_week": 3,
+        "minutes_per_session": 45,
+        "weekly_available_minutes": 135,
+        "non_training_days_per_week": 4,
+    }
     assert captured_request is not None
     assert captured_request.profile_data == ProfileInput.model_validate(valid_profile())
     assert captured_request.calculated_values.weekly_available_minutes == 135
     assert captured_request.calculated_values.non_training_days_per_week == 4
     factory = main.app.state.database_session_factory
     with factory() as database_session:
-        assert database_session.scalars(select(Plan)).all() == []
+        stored_plans = database_session.scalars(select(Plan)).all()
+        assert len(stored_plans) == 1
+        assert stored_plans[0].overview == generated_plan["overview"]
+        assert stored_plans[0].profile_snapshot == response_body["profile_snapshot"]
 
 
 def test_missing_profile_is_explicit_and_cannot_select_another_users_profile(
@@ -274,3 +290,136 @@ def test_unsafe_generated_content_is_rejected(
     assert response.status_code == 502
     assert response.json()["detail"]["code"] == "unsafe_model_output"
     assert response.json()["detail"]["issues"] == ["unsupported_nutrition_target"]
+
+    factory = main.app.state.database_session_factory
+    with factory() as database_session:
+        assert database_session.scalars(select(Plan)).all() == []
+
+
+def test_plan_history_details_and_profile_snapshot_survive_profile_changes(
+    generation_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    register(generation_client)
+    original_profile = valid_profile()
+    save_profile(generation_client, original_profile)
+    monkeypatch.setattr(workflow, "generate_structured_plan", lambda *_args: valid_generated_plan())
+
+    create_response = generation_client.post(
+        "/plans/generate", headers=csrf_headers(generation_client)
+    )
+    plan_id = create_response.json()["id"]
+    save_profile(generation_client, valid_profile(days_per_week=4, session_minutes=30))
+
+    history_response = generation_client.get("/plans")
+    detail_response = generation_client.get(f"/plans/{plan_id}")
+
+    assert history_response.status_code == 200
+    assert history_response.json() == [
+        {
+            "id": plan_id,
+            "title": valid_generated_plan().title,
+            "status": "inactive",
+            "created_at": create_response.json()["created_at"],
+            "updated_at": create_response.json()["updated_at"],
+            "archived_at": None,
+        }
+    ]
+    assert detail_response.status_code == 200
+    assert detail_response.json()["profile_snapshot"]["profile"] == original_profile
+    assert (
+        detail_response.json()["profile_snapshot"]["calculated_values"]["weekly_available_minutes"]
+        == 135
+    )
+
+
+def test_selecting_active_plan_and_archiving_preserve_lifecycle_invariants(
+    generation_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    register(generation_client)
+    save_profile(generation_client)
+    monkeypatch.setattr(workflow, "generate_structured_plan", lambda *_args: valid_generated_plan())
+    first_id = generation_client.post(
+        "/plans/generate", headers=csrf_headers(generation_client)
+    ).json()["id"]
+    second_id = generation_client.post(
+        "/plans/generate", headers=csrf_headers(generation_client)
+    ).json()["id"]
+
+    first_activation = generation_client.post(
+        f"/plans/{first_id}/activate", headers=csrf_headers(generation_client)
+    )
+    second_activation = generation_client.post(
+        f"/plans/{second_id}/activate", headers=csrf_headers(generation_client)
+    )
+    archived = generation_client.post(
+        f"/plans/{second_id}/archive", headers=csrf_headers(generation_client)
+    )
+    reactivation = generation_client.post(
+        f"/plans/{second_id}/activate", headers=csrf_headers(generation_client)
+    )
+
+    assert first_activation.status_code == 200
+    assert first_activation.json()["status"] == "active"
+    assert second_activation.status_code == 200
+    assert second_activation.json()["status"] == "active"
+    assert generation_client.get(f"/plans/{first_id}").json()["status"] == "inactive"
+    assert archived.status_code == 200
+    assert archived.json()["status"] == "archived"
+    assert archived.json()["archived_at"] is not None
+    assert reactivation.status_code == 409
+    assert reactivation.json()["detail"]["code"] == "archived_plan"
+
+    factory = main.app.state.database_session_factory
+    with factory() as database_session:
+        plans = database_session.scalars(select(Plan)).all()
+        assert sum(plan.status == "active" for plan in plans) == 0
+
+
+def test_plan_lifecycle_ownership_is_derived_from_session(
+    generation_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    register(generation_client, "first@example.com")
+    save_profile(generation_client)
+    monkeypatch.setattr(workflow, "generate_structured_plan", lambda *_args: valid_generated_plan())
+    plan_id = generation_client.post(
+        "/plans/generate", headers=csrf_headers(generation_client)
+    ).json()["id"]
+    assert (
+        generation_client.post("/auth/logout", headers=csrf_headers(generation_client)).status_code
+        == 204
+    )
+    register(generation_client, "second@example.com")
+
+    assert generation_client.get("/plans").json() == []
+    assert generation_client.get(f"/plans/{plan_id}").status_code == 404
+    assert (
+        generation_client.post(
+            f"/plans/{plan_id}/activate", headers=csrf_headers(generation_client)
+        ).status_code
+        == 404
+    )
+    assert (
+        generation_client.post(
+            f"/plans/{plan_id}/archive", headers=csrf_headers(generation_client)
+        ).status_code
+        == 404
+    )
+
+
+def test_plan_lifecycle_mutations_require_session_bound_csrf(
+    generation_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    register(generation_client)
+    save_profile(generation_client)
+    monkeypatch.setattr(workflow, "generate_structured_plan", lambda *_args: valid_generated_plan())
+    plan_id = generation_client.post(
+        "/plans/generate", headers=csrf_headers(generation_client)
+    ).json()["id"]
+
+    assert generation_client.post(f"/plans/{plan_id}/activate").status_code == 403
+    assert generation_client.post(f"/plans/{plan_id}/archive").status_code == 403
+    assert generation_client.get(f"/plans/{plan_id}").json()["status"] == "inactive"

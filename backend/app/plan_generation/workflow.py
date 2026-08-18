@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from sqlalchemy.orm import Session
 
 from app.config import Settings
@@ -10,6 +12,7 @@ from app.plan_generation.schemas import ClaudePlanRequest, GeneratedPlan
 from app.plan_generation.service import generate_structured_plan
 from app.profile.schemas import ProfileInput, ProfileResponse
 from app.profile.service import get_profile
+from app.wellness.schemas import WellnessCalculationResult
 from app.wellness.service import assess_profile_safety, calculate_profile_wellness
 
 _SYSTEM_INSTRUCTIONS = """Create a general-wellness plan that follows the response schema.
@@ -25,12 +28,30 @@ general-wellness constraints. Encourage users to stop if an activity causes pain
 appropriately qualified professional when they need medical or dietary treatment."""
 
 
+@dataclass(frozen=True)
+class GeneratedPlanResult:
+    """A validated plan and the exact inputs needed for its persistence snapshot."""
+
+    plan: GeneratedPlan
+    profile: ProfileInput
+    calculated_values: WellnessCalculationResult
+
+
 def generate_plan_for_user(
     database_session: Session,
     user: User,
     settings: Settings,
 ) -> GeneratedPlan:
-    """Orchestrate the authenticated profile-to-plan workflow without persistence."""
+    """Generate a validated plan for callers that do not require snapshot context."""
+    return generate_plan_result_for_user(database_session, user, settings).plan
+
+
+def generate_plan_result_for_user(
+    database_session: Session,
+    user: User,
+    settings: Settings,
+) -> GeneratedPlanResult:
+    """Orchestrate generation and retain the exact validated inputs used."""
     stored_profile = get_profile(database_session, user)
     if stored_profile is None:
         raise PlanWorkflowError(
@@ -65,4 +86,8 @@ def generate_plan_for_user(
             "Claude returned a plan that failed the general-wellness safety checks.",
             issues=tuple(issue.value for issue in output_safety.issues),
         )
-    return plan
+    return GeneratedPlanResult(
+        plan=plan,
+        profile=profile,
+        calculated_values=calculated_values,
+    )

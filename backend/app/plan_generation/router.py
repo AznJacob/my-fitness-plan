@@ -11,8 +11,9 @@ from app.plan_generation.errors import (
     PlanWorkflowError,
     PlanWorkflowFailureCode,
 )
-from app.plan_generation.schemas import GeneratedPlan
-from app.plan_generation.workflow import generate_plan_for_user
+from app.plan_generation.workflow import generate_plan_result_for_user
+from app.plans.schemas import PlanDetail
+from app.plans.service import persist_generated_plan
 
 router = APIRouter(prefix="/plans", tags=["plans"])
 
@@ -30,15 +31,20 @@ _WORKFLOW_STATUS_CODES = {
 }
 
 
-@router.post("/generate", response_model=GeneratedPlan)
+@router.post("/generate", response_model=PlanDetail, status_code=status.HTTP_201_CREATED)
 def generate_plan(
     database_session: DatabaseSession,
     authenticated_session: AuthenticatedCsrfSession,
     settings: ApplicationSettings,
-) -> GeneratedPlan:
-    """Generate a transient plan for the authenticated user's saved profile."""
+) -> PlanDetail:
+    """Generate, validate, and persist a plan for the authenticated user."""
     try:
-        return generate_plan_for_user(database_session, authenticated_session.user, settings)
+        result = generate_plan_result_for_user(
+            database_session,
+            authenticated_session.user,
+            settings,
+        )
+        return persist_generated_plan(database_session, authenticated_session.user, result)
     except PlanWorkflowError as error:
         raise HTTPException(
             status_code=_WORKFLOW_STATUS_CODES[error.code],

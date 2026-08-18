@@ -39,6 +39,7 @@ def test_plan_schema_enforces_one_active_plan_per_user() -> None:
 
     assert active_plan_index.unique is True
     assert str(active_plan_index.dialect_options["postgresql"]["where"]) == "status = 'active'"
+    assert plans.c.overview.nullable is False
 
 
 def test_authentication_schema_enforces_identity_safety_constraints() -> None:

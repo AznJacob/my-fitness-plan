@@ -16,6 +16,7 @@ from app.database import (
 )
 from app.middleware import NoStoreMiddleware
 from app.plan_generation.router import router as plan_generation_router
+from app.plans.router import router as plans_router
 from app.profile.router import router as profile_router
 from app.protected import router as protected_router
 
@@ -61,6 +62,7 @@ app.add_middleware(
 app.include_router(authentication_router)
 app.include_router(profile_router)
 app.include_router(plan_generation_router)
+app.include_router(plans_router)
 app.include_router(protected_router)
 
 
