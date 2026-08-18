@@ -7,6 +7,12 @@ interface ErrorResponse {
   detail?: unknown;
 }
 
+interface StructuredErrorDetail {
+  code?: unknown;
+  message?: unknown;
+  issues?: unknown;
+}
+
 const API_BASE_URL = `http://${window.location.hostname}:8000`;
 const CSRF_COOKIE_NAME = "mfp_csrf";
 
@@ -14,6 +20,8 @@ export class ApiError extends Error {
   constructor(
     message: string,
     readonly status: number,
+    readonly code: string | null = null,
+    readonly issues: string[] = [],
   ) {
     super(message);
     this.name = "ApiError";
@@ -29,17 +37,36 @@ function readCookie(name: string): string | null {
 
 async function errorFromResponse(response: Response): Promise<ApiError> {
   let message = "The request could not be completed.";
+  let code: string | null = null;
+  let issues: string[] = [];
 
   try {
     const body = (await response.json()) as ErrorResponse;
     if (typeof body.detail === "string") {
       message = body.detail;
+    } else if (isStructuredErrorDetail(body.detail)) {
+      if (typeof body.detail.message === "string") {
+        message = body.detail.message;
+      }
+      if (typeof body.detail.code === "string") {
+        code = body.detail.code;
+      }
+      if (
+        Array.isArray(body.detail.issues) &&
+        body.detail.issues.every((issue) => typeof issue === "string")
+      ) {
+        issues = body.detail.issues;
+      }
     }
   } catch {
     // Keep the generic message when the server does not return JSON.
   }
 
-  return new ApiError(message, response.status);
+  return new ApiError(message, response.status, code, issues);
+}
+
+function isStructuredErrorDetail(value: unknown): value is StructuredErrorDetail {
+  return typeof value === "object" && value !== null;
 }
 
 export async function apiRequest(path: string, init: RequestInit = {}): Promise<Response> {

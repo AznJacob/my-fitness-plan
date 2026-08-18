@@ -1,10 +1,14 @@
 import { AccountLinking } from "./auth/AccountLinking";
 import { AuthForm } from "./auth/AuthForm";
 import { useAuth } from "./auth/useAuth";
+import { AppNavigation } from "./navigation/AppNavigation";
+import { useAppRoute } from "./navigation/useAppRoute";
+import { PlanGenerationView } from "./plan-generation/PlanGenerationView";
 import { ProfileForm } from "./profile/ProfileForm";
 
 export function App() {
   const { error, logout, status, user } = useAuth();
+  const { navigate, route } = useAppRoute();
 
   if (status === "loading") {
     return (
@@ -53,8 +57,24 @@ export function App() {
                 </p>
               )}
             </section>
-            <AccountLinking />
-            <ProfileForm />
+            <AppNavigation currentRoute={route} navigate={navigate} />
+            {route === "generate" ? (
+              <PlanGenerationView onEditProfile={() => navigate("profile")} />
+            ) : route === "profile" ? (
+              <ProfileForm />
+            ) : route === "account" ? (
+              <AccountLinking />
+            ) : (
+              <section aria-labelledby="not-found-heading">
+                <h2 id="not-found-heading">Page not found</h2>
+                <p className="mt-2 text-slate-600">
+                  The requested page is not part of MyFitnessPlan.
+                </p>
+                <button type="button" className="mt-4" onClick={() => navigate("generate")}>
+                  Go to plan generation
+                </button>
+              </section>
+            )}
           </div>
         ) : (
           <AuthForm />

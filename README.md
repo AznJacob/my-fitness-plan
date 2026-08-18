@@ -362,6 +362,17 @@ explicitly deferred research/citation work are recorded in
 [`docs/milestone-9-generation-architecture.md`](docs/milestone-9-generation-architecture.md).
 No paid Claude request is made by automated verification.
 
+Authenticated frontend workflows now use simple browser-history routes:
+
+- `/plans/new` reviews the saved profile, starts protected generation, presents explicit loading
+  and failure states, and renders the validated workout and nutrition result with a wellness
+  disclaimer.
+- `/profile` creates or edits the saved planning profile.
+- `/account` manages connected password and Google sign-in methods.
+
+The Stage 9.2 generated plan exists only in browser memory. Refreshing intentionally clears it;
+database persistence and plan history are deferred to Milestone 10.
+
 ### Code quality checks
 
 Run backend checks from `backend/`:

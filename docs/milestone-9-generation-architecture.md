@@ -46,3 +46,27 @@ to Stage 9.3. Generated plans are transient until Milestone 10 adds persistence 
 Research retrieval, pgvector, research citations, and source attribution are not implemented. The
 workflow explicitly tells Claude not to invent research or citations. MyFitnessPlan remains a
 general-wellness application and is not production-ready.
+
+## Stage 9.2 React generation experience
+
+Authenticated users now have separate browser-history routes for plan generation (`/plans/new`),
+profile editing (`/profile`), and account settings (`/account`). The small route matcher uses the
+native History API because these three static views do not yet justify another frontend dependency.
+Normal links still contain real paths, modified clicks continue to behave like browser links, and
+back/forward navigation updates the rendered view. Milestone 10 can extend the matcher for plan
+history and plan-detail identifiers.
+
+The generation view reloads the authenticated user's saved profile from the backend and shows the
+goal, experience, schedule, equipment, dietary preferences, and constraints before enabling the
+paid action. Generation uses the shared credentialed client, which copies the readable CSRF cookie
+into the request header without reading the HttpOnly session cookie.
+
+The interface distinguishes initial profile loading, missing profile, generation in progress,
+profile scope rejection, provider unavailability, other generation failures, and success. A
+successful transient result renders all workout sessions, exercise prescriptions, progression and
+recovery guidance, meal templates, hydration, timing, and dietary-preference notes. A visible
+general-wellness disclaimer remains alongside the action and result.
+
+Generated output is intentionally held only in React memory in this stage. Refreshing the page
+restores authentication and the saved profile but not the generated plan. Persistence, history,
+active selection, and archiving remain Milestone 10 responsibilities.
