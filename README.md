@@ -107,6 +107,11 @@ Replace `POSTGRES_PASSWORD` in `.env` with a local development password. Do not 
 Docker Compose constructs the backend's `DATABASE_URL` from these values and uses the internal
 `postgres:5432` service address. FastAPI verifies that connection before startup completes.
 
+Claude configuration is optional until plan generation is used. Put a real `ANTHROPIC_API_KEY` only
+in the ignored `.env` file. The committed template defaults to the pinned Claude Haiku 4.5 snapshot,
+a 60-second timeout, a 6,000-token output cap, and no automatic retries. Do not place the key in
+frontend environment variables because browser-delivered values are public.
+
 Build and start the stack:
 
 ```bash
@@ -341,6 +346,10 @@ unsupported physiological calculations are recorded in
 The backend now calculates weekly available minutes and non-training days from a validated profile
 and rejects explicit medical or rehabilitation requests through a deterministic general-wellness
 scope assessment. These internal services do not generate or persist plans and do not call Claude.
+Stage 8.1 Claude configuration, bounded client behavior, strict workout and nutrition schemas, and
+prompt-section boundaries are documented in
+[`docs/milestone-8-claude-integration.md`](docs/milestone-8-claude-integration.md). No real provider
+request is made by Stage 8.1.
 
 ### Code quality checks
 
