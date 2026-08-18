@@ -16,7 +16,7 @@ export function App() {
     return (
       <main className="min-h-screen bg-slate-50 px-4 py-10 text-slate-900">
         <div className="mx-auto max-w-5xl">
-          <h1 className="text-3xl font-bold tracking-tight">MyFitness Plan</h1>
+          <h1 className="text-3xl font-bold tracking-tight">MyFitnessPlan</h1>
           <p className="mt-2 text-slate-600">Checking your session…</p>
         </div>
       </main>
@@ -75,21 +75,7 @@ export function App() {
         </main>
       ) : (
         <main className="flex min-h-[calc(100vh-4rem)] items-center justify-center px-4 py-10 sm:px-6">
-          <div className="grid w-full max-w-5xl items-center gap-10 lg:grid-cols-[0.9fr_1.1fr]">
-            <div className="max-w-md">
-              <p className="text-xs font-bold uppercase tracking-[0.2em] text-indigo-700">
-                MyFitness Plan
-              </p>
-              <h1 className="mt-4 text-4xl font-black tracking-tight text-slate-950 sm:text-5xl">
-                Your plan starts with one account.
-              </h1>
-              <p className="mt-5 text-base leading-7 text-slate-600">
-                Sign in or create an account to build personalized workout and nutrition plans and
-                keep your history in one place.
-              </p>
-            </div>
-            <AuthForm key={authMode} initialMode={authMode} />
-          </div>
+          <AuthForm key={authMode} initialMode={authMode} />
         </main>
       )}
     </div>

@@ -98,8 +98,7 @@ export function PlanHistoryView({
             Plan history
           </h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
-            Revisit previous routines, keep one plan active, and build something new whenever your
-            schedule or goals change.
+            View and manage your previously generated plans.
           </p>
         </div>
       </div>
@@ -110,10 +109,10 @@ export function PlanHistoryView({
             Active plan
           </p>
           <h2 id="active-plan-heading" className="mt-2">
-            Nothing selected yet
+            No active plan
           </h2>
           <p className="mt-2 text-sm text-slate-600">
-            Open a saved plan below to make it your current focus.
+            Select a saved plan below to set it as active.
           </p>
         </section>
       ) : (
@@ -124,12 +123,11 @@ export function PlanHistoryView({
           <div className="flex flex-wrap items-end justify-between gap-5">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/70">
-                Current focus · {formatGoal(activePlan.fitness_goal)}
+                Active plan · {formatGoal(activePlan.fitness_goal)}
               </p>
               <h2 id="active-plan-heading" className="mt-2 text-2xl">
                 {activePlan.title}
               </h2>
-              <p className="mt-2 text-sm text-white/70">Selected from your saved plans</p>
             </div>
             <button
               type="button"
@@ -158,8 +156,10 @@ export function PlanHistoryView({
         </div>
         {state.plans.length === 0 ? (
           <div className="mt-5 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center">
-            <p className="font-semibold text-slate-800">Your plan library is ready.</p>
-            <p className="mt-2 text-sm text-slate-600">Generate your first plan to see it here.</p>
+            <p className="font-semibold text-slate-800">No saved plans</p>
+            <p className="mt-2 text-sm text-slate-600">
+              Generate a plan to add it to your history.
+            </p>
             <button type="button" className="mt-5" onClick={onGenerate}>
               Generate your first plan
             </button>

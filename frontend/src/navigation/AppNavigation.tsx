@@ -52,18 +52,18 @@ export function AppNavigation({ authenticated, currentRoute, navigate }: AppNavi
 
   return (
     <header className="sticky top-0 z-20 border-b border-white/10 bg-gradient-to-r from-slate-950 via-slate-900 to-indigo-950 px-4 py-3 text-white shadow-lg shadow-slate-950/10 sm:px-6 lg:px-8">
-      <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-6 gap-y-3">
+      <div className="mx-auto grid max-w-7xl grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-3 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
         <a
           href={pathForRoute({ name: "home" })}
-          className="text-lg font-black tracking-tight text-white"
+          className="justify-self-start text-lg font-black tracking-tight text-white"
           onClick={(event) => handleNavigation(event, { name: "home" })}
         >
-          MyFitness Plan
+          MyFitnessPlan
         </a>
 
         <nav
           aria-label="Main navigation"
-          className="order-3 flex w-full gap-1 sm:order-none sm:w-auto"
+          className="order-3 col-span-2 flex w-full justify-center gap-1 sm:order-none sm:col-span-1 sm:w-auto sm:justify-self-center"
         >
           {LINKS.map((link) => {
             const active = isActive(link.route);
@@ -88,7 +88,7 @@ export function AppNavigation({ authenticated, currentRoute, navigate }: AppNavi
             authenticated
               ? linkClass(isActive(accountLink.route))
               : "rounded-lg bg-gradient-to-r from-lime-300 to-emerald-400 px-4 py-2 text-sm font-bold text-slate-950 transition hover:from-lime-200 hover:to-emerald-300"
-          } ml-auto`}
+          } justify-self-end`}
           onClick={(event) => handleNavigation(event, accountLink.route)}
         >
           {accountLink.label}

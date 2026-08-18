@@ -2,7 +2,7 @@ export function HomeView({ onGenerate }: { onGenerate: () => void }) {
   return (
     <div
       aria-labelledby="home-heading"
-      className="relative isolate flex min-h-[calc(100vh-4rem)] items-center justify-center overflow-hidden bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-900 px-6 py-20 text-center text-white sm:px-12"
+      className="relative isolate flex min-h-[calc(100vh-4rem)] items-start justify-center overflow-hidden bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-900 px-6 py-20 text-center text-white sm:px-12"
     >
       <div
         aria-hidden="true"
@@ -18,31 +18,28 @@ export function HomeView({ onGenerate }: { onGenerate: () => void }) {
       />
 
       <div className="relative mx-auto max-w-3xl">
-        <p className="text-xs font-bold uppercase tracking-[0.24em] text-lime-300">
-          Plan with purpose
-        </p>
         <h1
           id="home-heading"
-          className="mt-5 text-5xl font-black tracking-[-0.04em] text-balance sm:text-7xl"
+          className="text-5xl font-black tracking-[-0.04em] text-balance sm:text-7xl"
         >
-          Fitness planning built around your real life.
+          Fitness planning built for you
         </h1>
         <p className="mx-auto mt-7 max-w-2xl text-base leading-8 text-slate-300 sm:text-xl">
-          MyFitnessPlan turns your goals, experience, schedule, equipment, and food preferences into
-          a practical workout and nutrition plan you can actually follow.
+          Generate a workout and nutrition plan based on your fitness goal, experience, schedule,
+          equipment, and dietary preferences.
         </p>
         <button
           type="button"
           className="mt-10 rounded-2xl bg-gradient-to-r from-lime-300 to-emerald-400 px-8 py-4 text-base font-bold text-slate-950 shadow-xl shadow-emerald-950/30 transition hover:-translate-y-0.5 hover:from-lime-200 hover:to-emerald-300"
           onClick={onGenerate}
         >
-          Create my plan
+          Generate a plan
         </button>
 
         <div className="mt-10 flex flex-wrap justify-center gap-3 text-sm text-slate-400">
-          <span>Built for your schedule</span>
-          <span>Workout and nutrition guidance</span>
-          <span>General wellness focused</span>
+          <span>Workout plans</span>
+          <span>Nutrition plans</span>
+          <span>Saved plan history</span>
         </div>
       </div>
     </div>

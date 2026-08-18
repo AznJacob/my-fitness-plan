@@ -132,170 +132,182 @@ export function AccountLinking() {
   }
 
   return (
-    <section aria-labelledby="sign-in-methods-heading">
-      <p className="text-xs font-bold uppercase tracking-[0.18em] text-indigo-600">Security</p>
-      <h2 id="sign-in-methods-heading" className="mt-2">
-        Password and sign-in methods
-      </h2>
-      <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-        Connect both methods if you want to sign in with either Google or a MyFitnessPlan password.
-      </p>
-      {methods === null ? (
-        error === null ? (
-          <p className="mt-4 text-slate-600">Loading connected methods…</p>
-        ) : null
-      ) : (
-        <>
-          <ul className="mt-4 grid gap-3 sm:grid-cols-2">
-            <MethodStatus connected={methods.password} label="Password" />
-            <MethodStatus connected={methods.google} label="Google" />
-          </ul>
-
-          {methods.password ? (
-            <form
-              className="mt-6 rounded-2xl border border-slate-200 bg-slate-50/70 p-5 sm:p-6"
-              onSubmit={(event) => void handlePasswordChange(event)}
-            >
-              <h3>Change password</h3>
-              <p className="mt-1 text-sm text-slate-600">
-                Confirm your current password before choosing a new one.
-              </p>
-              <div className="mt-4 grid max-w-xl gap-4">
-                <div>
-                  <label htmlFor="change-current-password">Current password</label>
-                  <input
-                    id="change-current-password"
-                    type="password"
-                    autoComplete="current-password"
-                    maxLength={128}
-                    required
-                    value={changeCurrentPassword}
-                    onChange={(event) => setChangeCurrentPassword(event.target.value)}
-                  />
-                </div>
-                <div>
-                  <label htmlFor="changed-password">New password</label>
-                  <input
-                    id="changed-password"
-                    type="password"
-                    autoComplete="new-password"
-                    minLength={8}
-                    maxLength={128}
-                    required
-                    value={changedPassword}
-                    onChange={(event) => setChangedPassword(event.target.value)}
-                  />
-                </div>
-                <div>
-                  <label htmlFor="changed-password-confirmation">Confirm new password</label>
-                  <input
-                    id="changed-password-confirmation"
-                    type="password"
-                    autoComplete="new-password"
-                    minLength={8}
-                    maxLength={128}
-                    required
-                    value={changedPasswordConfirmation}
-                    onChange={(event) => setChangedPasswordConfirmation(event.target.value)}
-                  />
-                </div>
-              </div>
-              <button className="mt-4" type="submit" disabled={changingPassword}>
-                {changingPassword ? "Changing…" : "Change password"}
-              </button>
-            </form>
-          ) : null}
-
-          {!methods.google && methods.password ? (
-            <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50/70 p-5 sm:p-6">
-              <h3>Connect Google</h3>
-              <p className="mt-1 text-sm text-slate-600">
-                Step 1: Re-enter your current MyFitnessPlan password.
-              </p>
-              <div className="mt-4 max-w-md">
-                <label htmlFor="link-current-password">Current MyFitnessPlan password</label>
-                <input
-                  id="link-current-password"
-                  name="link-current-password"
-                  type="password"
-                  autoComplete="current-password"
-                  maxLength={128}
-                  value={currentPassword}
-                  onChange={(event) => setCurrentPassword(event.target.value)}
-                />
-              </div>
-              <div className="mt-5 rounded-xl border border-indigo-200 bg-indigo-50 p-4">
-                <p className="text-sm font-medium text-indigo-900">
-                  Step 2: Click the Google button below to verify and finish connecting Google.
-                </p>
-                <GoogleIdentityButton
-                  ariaLabel="Verify Google to connect it"
-                  pendingMessage="Connecting Google…"
-                  onCredential={handleGoogleLink}
-                />
-              </div>
-            </div>
-          ) : null}
-
-          {!methods.password && methods.google ? (
-            <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50/70 p-5 sm:p-6">
-              <h3>Add a password</h3>
-              <p className="mt-1 text-sm text-slate-600">
-                Step 1: Create the MyFitnessPlan password you want to use for future logins.
-              </p>
-              <div className="mt-4 grid max-w-2xl gap-4 sm:grid-cols-2">
-                <div>
-                  <label htmlFor="link-new-password">New password</label>
-                  <input
-                    id="link-new-password"
-                    name="link-new-password"
-                    type="password"
-                    autoComplete="new-password"
-                    minLength={8}
-                    maxLength={128}
-                    value={newPassword}
-                    onChange={(event) => setNewPassword(event.target.value)}
-                  />
-                </div>
-                <div>
-                  <label htmlFor="link-confirm-password">Confirm new password</label>
-                  <input
-                    id="link-confirm-password"
-                    name="link-confirm-password"
-                    type="password"
-                    autoComplete="new-password"
-                    minLength={8}
-                    maxLength={128}
-                    value={confirmPassword}
-                    onChange={(event) => setConfirmPassword(event.target.value)}
-                  />
-                </div>
-              </div>
-              <div className="mt-5 rounded-xl border border-indigo-200 bg-indigo-50 p-4">
-                <p className="text-sm font-medium text-indigo-900">
-                  Step 2: Click “Continue as…” below. That Google button verifies your account and
-                  finishes linking the password.
-                </p>
-                <GoogleIdentityButton
-                  ariaLabel="Verify Google to add a password"
-                  pendingMessage="Adding password…"
-                  onCredential={handlePasswordLink}
-                />
-              </div>
-            </div>
-          ) : null}
-        </>
-      )}
+    <div className="space-y-6">
       {error === null ? null : (
-        <p className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700" role="alert">
+        <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700" role="alert">
           {error}
         </p>
       )}
       {successMessage === null ? null : (
-        <p className="mt-4 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700" role="status">
+        <p className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700" role="status">
           {successMessage}
         </p>
       )}
-    </section>
+
+      <section aria-labelledby="password-heading">
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-indigo-600">Security</p>
+        <h2 id="password-heading" className="mt-2">
+          Password
+        </h2>
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+          Manage the password used to access your MyFitnessPlan account.
+        </p>
+
+        {methods === null ? (
+          error === null ? (
+            <p className="mt-4 text-slate-600">Loading password settings…</p>
+          ) : null
+        ) : methods.password ? (
+          <form className="mt-6 max-w-xl" onSubmit={(event) => void handlePasswordChange(event)}>
+            <h3>Change password</h3>
+            <p className="mt-1 text-sm text-slate-600">
+              Confirm your current password before choosing a new one.
+            </p>
+            <div className="mt-4 grid gap-4">
+              <div>
+                <label htmlFor="change-current-password">Current password</label>
+                <input
+                  id="change-current-password"
+                  type="password"
+                  autoComplete="current-password"
+                  maxLength={128}
+                  required
+                  value={changeCurrentPassword}
+                  onChange={(event) => setChangeCurrentPassword(event.target.value)}
+                />
+              </div>
+              <div>
+                <label htmlFor="changed-password">New password</label>
+                <input
+                  id="changed-password"
+                  type="password"
+                  autoComplete="new-password"
+                  minLength={8}
+                  maxLength={128}
+                  required
+                  value={changedPassword}
+                  onChange={(event) => setChangedPassword(event.target.value)}
+                />
+              </div>
+              <div>
+                <label htmlFor="changed-password-confirmation">Confirm new password</label>
+                <input
+                  id="changed-password-confirmation"
+                  type="password"
+                  autoComplete="new-password"
+                  minLength={8}
+                  maxLength={128}
+                  required
+                  value={changedPasswordConfirmation}
+                  onChange={(event) => setChangedPasswordConfirmation(event.target.value)}
+                />
+              </div>
+            </div>
+            <button className="mt-4" type="submit" disabled={changingPassword}>
+              {changingPassword ? "Changing…" : "Change password"}
+            </button>
+          </form>
+        ) : methods.google ? (
+          <div className="mt-6">
+            <h3>Add a password</h3>
+            <p className="mt-1 text-sm text-slate-600">
+              Step 1: Create the MyFitnessPlan password you want to use for future logins.
+            </p>
+            <div className="mt-4 grid max-w-2xl gap-4 sm:grid-cols-2">
+              <div>
+                <label htmlFor="link-new-password">New password</label>
+                <input
+                  id="link-new-password"
+                  name="link-new-password"
+                  type="password"
+                  autoComplete="new-password"
+                  minLength={8}
+                  maxLength={128}
+                  value={newPassword}
+                  onChange={(event) => setNewPassword(event.target.value)}
+                />
+              </div>
+              <div>
+                <label htmlFor="link-confirm-password">Confirm new password</label>
+                <input
+                  id="link-confirm-password"
+                  name="link-confirm-password"
+                  type="password"
+                  autoComplete="new-password"
+                  minLength={8}
+                  maxLength={128}
+                  value={confirmPassword}
+                  onChange={(event) => setConfirmPassword(event.target.value)}
+                />
+              </div>
+            </div>
+            <div className="mt-5 rounded-xl border border-indigo-200 bg-indigo-50 p-4">
+              <p className="text-sm font-medium text-indigo-900">
+                Step 2: Use Google below to verify your account and finish adding the password.
+              </p>
+              <GoogleIdentityButton
+                ariaLabel="Verify Google to add a password"
+                pendingMessage="Adding password…"
+                onCredential={handlePasswordLink}
+              />
+            </div>
+          </div>
+        ) : null}
+      </section>
+
+      <section aria-labelledby="sign-in-methods-heading">
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-indigo-600">Access</p>
+        <h2 id="sign-in-methods-heading" className="mt-2">
+          Sign-in methods
+        </h2>
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+          Connect both methods if you want to sign in with either Google or your password.
+        </p>
+
+        {methods === null ? (
+          error === null ? (
+            <p className="mt-4 text-slate-600">Loading connected methods…</p>
+          ) : null
+        ) : (
+          <>
+            <ul className="mt-4 grid gap-3 sm:grid-cols-2">
+              <MethodStatus connected={methods.password} label="Password" />
+              <MethodStatus connected={methods.google} label="Google" />
+            </ul>
+
+            {!methods.google && methods.password ? (
+              <div className="mt-6 max-w-2xl border-t border-slate-200 pt-6">
+                <h3>Connect Google</h3>
+                <p className="mt-1 text-sm text-slate-600">
+                  Step 1: Re-enter your current MyFitnessPlan password.
+                </p>
+                <div className="mt-4 max-w-md">
+                  <label htmlFor="link-current-password">Current MyFitnessPlan password</label>
+                  <input
+                    id="link-current-password"
+                    name="link-current-password"
+                    type="password"
+                    autoComplete="current-password"
+                    maxLength={128}
+                    value={currentPassword}
+                    onChange={(event) => setCurrentPassword(event.target.value)}
+                  />
+                </div>
+                <div className="mt-5 rounded-xl border border-indigo-200 bg-indigo-50 p-4">
+                  <p className="text-sm font-medium text-indigo-900">
+                    Step 2: Use Google below to verify and finish connecting it.
+                  </p>
+                  <GoogleIdentityButton
+                    ariaLabel="Verify Google to connect it"
+                    pendingMessage="Connecting Google…"
+                    onCredential={handleGoogleLink}
+                  />
+                </div>
+              </div>
+            ) : null}
+          </>
+        )}
+      </section>
+    </div>
   );
 }

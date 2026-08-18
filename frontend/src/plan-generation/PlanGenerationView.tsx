@@ -30,7 +30,6 @@ interface PreferencesDraft {
   sessionMinutes: string;
   equipment: string;
   dietaryPreferences: string;
-  wellnessConstraints: string;
 }
 
 const INITIAL_PREFERENCES: PreferencesDraft = {
@@ -40,7 +39,6 @@ const INITIAL_PREFERENCES: PreferencesDraft = {
   sessionMinutes: "45",
   equipment: "",
   dietaryPreferences: "",
-  wellnessConstraints: "",
 };
 
 function messageFromError(error: unknown): string {
@@ -71,7 +69,7 @@ function preferencesFromDraft(draft: PreferencesDraft): PlanningPreferences {
     session_minutes: Number(draft.sessionMinutes),
     equipment: listFromLines(draft.equipment),
     dietary_preferences: listFromLines(draft.dietaryPreferences),
-    wellness_constraints: listFromLines(draft.wellnessConstraints),
+    wellness_constraints: [],
   };
 }
 
@@ -304,33 +302,11 @@ export function PlanGenerationView({ onViewPlan }: { onViewPlan: (planId: string
 
   return (
     <div className="space-y-6">
-      <section aria-labelledby="plan-generation-heading" className="page-hero">
-        <p className="page-eyebrow">Plan builder</p>
-        <h1
-          id="plan-generation-heading"
-          className="mt-3 text-3xl font-black tracking-tight sm:text-4xl"
-        >
-          Build a plan that fits your week.
+      <div className="px-1">
+        <h1 id="plan-generation-heading" className="text-3xl font-black tracking-tight sm:text-4xl">
+          Generate a fitness plan
         </h1>
-        <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
-          Choose the goals, schedule, and preferences for this plan. These choices are used for this
-          generation only and are not saved to your account.
-        </p>
-        <div className="mt-7 grid max-w-xl grid-cols-3 gap-3 text-left">
-          {[
-            ["01", "Your goal"],
-            ["02", "Your schedule"],
-            ["03", "Your preferences"],
-          ].map(([number, label]) => (
-            <div key={number} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-              <span className="block text-xs font-bold text-indigo-600">{number}</span>
-              <span className="mt-1 block text-xs font-medium text-slate-600 sm:text-sm">
-                {label}
-              </span>
-            </div>
-          ))}
-        </div>
-      </section>
+      </div>
 
       <section aria-labelledby="preferences-heading">
         <div className="max-w-2xl">
@@ -338,11 +314,8 @@ export function PlanGenerationView({ onViewPlan }: { onViewPlan: (planId: string
             Plan preferences
           </p>
           <h2 id="preferences-heading" className="mt-2">
-            Tell us what works for you
+            Enter your details
           </h2>
-          <p className="mt-2 text-sm leading-6 text-slate-600">
-            There are no perfect answers. Choose what feels realistic for the week ahead.
-          </p>
         </div>
 
         <form
@@ -423,18 +396,6 @@ export function PlanGenerationView({ onViewPlan }: { onViewPlan: (planId: string
               rows={4}
               value={draft.dietaryPreferences}
               onChange={(event) => updateDraft("dietaryPreferences", event.target.value)}
-            />
-          </p>
-          <p className="mb-0 rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200/70 sm:col-span-2">
-            <label htmlFor="wellness-constraints">
-              Relevant general wellness constraints (one item per line)
-            </label>
-            <textarea
-              id="wellness-constraints"
-              name="wellness-constraints"
-              rows={3}
-              value={draft.wellnessConstraints}
-              onChange={(event) => updateDraft("wellnessConstraints", event.target.value)}
             />
           </p>
           <button

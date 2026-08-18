@@ -85,12 +85,8 @@ export function AccountSettingsView({
       <section aria-labelledby="account-heading" className="page-hero">
         <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="page-eyebrow">Account settings</p>
-            <h1
-              id="account-heading"
-              className="mt-3 text-3xl font-black tracking-tight sm:text-4xl"
-            >
-              Your account, your way.
+            <h1 id="account-heading" className="page-eyebrow">
+              Account settings
             </h1>
             <p className="mt-3 text-sm text-slate-600">Signed in as {email}</p>
           </div>
@@ -109,12 +105,8 @@ export function AccountSettingsView({
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-indigo-600">
             Personal details
           </p>
-          <h2 id="personal-details-heading" className="mt-2">
-            The basics
-          </h2>
           <p className="mt-2 text-sm leading-6 text-slate-600">
-            Keep your core account information accurate. Height and weight are stored privately with
-            your account.
+            Update the username, height, and weight stored with your account.
           </p>
         </div>
 

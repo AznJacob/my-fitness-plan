@@ -39,17 +39,9 @@ export function AuthForm({ initialMode = "login" }: { initialMode?: AuthMode }) 
 
   return (
     <section aria-labelledby="auth-heading" className="w-full max-w-lg p-7 sm:p-9">
-      <p className="text-xs font-bold uppercase tracking-[0.18em] text-indigo-600">
-        {isRegistration ? "Get started" : "Welcome back"}
-      </p>
-      <h2 id="auth-heading" className="mt-2 text-3xl font-black tracking-tight">
-        {isRegistration ? "Create your account" : "Log in to continue"}
+      <h2 id="auth-heading" className="text-3xl font-black tracking-tight">
+        {isRegistration ? "Create account" : "Log in"}
       </h2>
-      <p className="mt-2 text-sm leading-6 text-slate-600">
-        {isRegistration
-          ? "Create an account to generate and save your personalized plans."
-          : "Access plan generation, saved plans, and your account settings."}
-      </p>
       <form className="mt-5" onSubmit={(event) => void handleSubmit(event)}>
         <p>
           <label htmlFor="email">Email</label>

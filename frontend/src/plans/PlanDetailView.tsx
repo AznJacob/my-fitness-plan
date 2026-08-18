@@ -139,7 +139,7 @@ export function PlanDetailView({ planId, onBack }: { planId: string; onBack: () 
             {plan.status === "inactive" ? (
               <button
                 type="button"
-                className="bg-gradient-to-r from-lime-300 to-emerald-400 text-slate-950 hover:from-lime-200 hover:to-emerald-300"
+                className="button-secondary"
                 disabled={pendingAction !== null}
                 onClick={() => void handleActivate()}
               >
@@ -149,7 +149,7 @@ export function PlanDetailView({ planId, onBack }: { planId: string; onBack: () 
             {plan.status !== "archived" ? (
               <button
                 type="button"
-                className="bg-red-700 hover:bg-red-600"
+                className="button-secondary"
                 disabled={pendingAction !== null}
                 onClick={() => void handleArchive()}
               >
