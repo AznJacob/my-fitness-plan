@@ -6,7 +6,7 @@ export function GoogleSignInButton() {
 
   return (
     <div>
-      <p>Or</p>
+      <p className="mt-5 text-sm text-slate-500">Or continue with Google</p>
       <GoogleIdentityButton
         ariaLabel="Google Sign-In"
         pendingMessage="Signing in with Google…"

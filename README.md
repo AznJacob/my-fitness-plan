@@ -23,6 +23,7 @@ Potentially unsafe inputs and generated outputs must be validated. Appropriate d
 ## Planned technology stack
 
 - React frontend using TypeScript
+- Tailwind CSS for basic, utility-first frontend styling
 - FastAPI backend using Python and Pydantic
 - PostgreSQL
 - Docker Compose for local development

@@ -12,12 +12,28 @@ function messageFromError(error: unknown): string {
   return error instanceof Error ? error.message : "The sign-in method could not be connected.";
 }
 
+function MethodStatus({ connected, label }: { connected: boolean; label: string }) {
+  return (
+    <li className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-4 py-3">
+      <span className="font-medium">{label}</span>
+      <span
+        className={`rounded-full px-3 py-1 text-xs font-semibold ${
+          connected ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
+        }`}
+      >
+        {connected ? "Connected" : "Not connected"}
+      </span>
+    </li>
+  );
+}
+
 export function AccountLinking() {
   const [methods, setMethods] = useState<ConnectedMethods | null>(null);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -42,6 +58,7 @@ export function AccountLinking() {
   const handleGoogleLink = useCallback(
     async (idToken: string) => {
       setError(null);
+      setSuccessMessage(null);
       if (currentPassword.length === 0) {
         setError("Enter your current MyFitnessPlan password before continuing with Google.");
         throw new Error("Current password required.");
@@ -51,6 +68,7 @@ export function AccountLinking() {
         const connectedMethods = await linkGoogle(currentPassword, idToken);
         setMethods(connectedMethods);
         setCurrentPassword("");
+        setSuccessMessage("Google is now connected. You can use either method to sign in.");
       } catch (requestError) {
         setError(messageFromError(requestError));
         throw requestError;
@@ -62,6 +80,7 @@ export function AccountLinking() {
   const handlePasswordLink = useCallback(
     async (googleIdToken: string) => {
       setError(null);
+      setSuccessMessage(null);
       if (newPassword !== confirmPassword) {
         setError("The new passwords do not match.");
         throw new Error("Password confirmation failed.");
@@ -76,6 +95,7 @@ export function AccountLinking() {
         setMethods(connectedMethods);
         setNewPassword("");
         setConfirmPassword("");
+        setSuccessMessage("Your password is connected. You can use either method to sign in.");
       } catch (requestError) {
         setError(messageFromError(requestError));
         throw requestError;
@@ -87,82 +107,110 @@ export function AccountLinking() {
   return (
     <section aria-labelledby="sign-in-methods-heading">
       <h2 id="sign-in-methods-heading">Sign-in methods</h2>
+      <p className="mt-1 text-sm text-slate-600">
+        Connect both methods if you want to sign in with either Google or a MyFitnessPlan password.
+      </p>
       {methods === null ? (
         error === null ? (
-          <p>Loading connected methods…</p>
+          <p className="mt-4 text-slate-600">Loading connected methods…</p>
         ) : null
       ) : (
         <>
-          <ul>
-            <li>Password: {methods.password ? "Connected" : "Not connected"}</li>
-            <li>Google: {methods.google ? "Connected" : "Not connected"}</li>
+          <ul className="mt-4 grid gap-3 sm:grid-cols-2">
+            <MethodStatus connected={methods.password} label="Password" />
+            <MethodStatus connected={methods.google} label="Google" />
           </ul>
 
           {!methods.google && methods.password ? (
-            <div>
+            <div className="mt-6 border-t border-slate-200 pt-6">
               <h3>Connect Google</h3>
-              <p>Re-enter your current password, then verify the Google account you want to add.</p>
-              <label htmlFor="link-current-password">Current MyFitnessPlan password</label>
-              <br />
-              <input
-                id="link-current-password"
-                name="link-current-password"
-                type="password"
-                autoComplete="current-password"
-                maxLength={128}
-                value={currentPassword}
-                onChange={(event) => setCurrentPassword(event.target.value)}
-              />
-              <GoogleIdentityButton
-                ariaLabel="Verify Google to connect it"
-                pendingMessage="Connecting Google…"
-                onCredential={handleGoogleLink}
-              />
+              <p className="mt-1 text-sm text-slate-600">
+                Step 1: Re-enter your current MyFitnessPlan password.
+              </p>
+              <div className="mt-4 max-w-md">
+                <label htmlFor="link-current-password">Current MyFitnessPlan password</label>
+                <input
+                  id="link-current-password"
+                  name="link-current-password"
+                  type="password"
+                  autoComplete="current-password"
+                  maxLength={128}
+                  value={currentPassword}
+                  onChange={(event) => setCurrentPassword(event.target.value)}
+                />
+              </div>
+              <div className="mt-5 rounded-lg border border-blue-200 bg-blue-50 p-4">
+                <p className="text-sm font-medium text-blue-900">
+                  Step 2: Click the Google button below to verify and finish connecting Google.
+                </p>
+                <GoogleIdentityButton
+                  ariaLabel="Verify Google to connect it"
+                  pendingMessage="Connecting Google…"
+                  onCredential={handleGoogleLink}
+                />
+              </div>
             </div>
           ) : null}
 
           {!methods.password && methods.google ? (
-            <div>
+            <div className="mt-6 border-t border-slate-200 pt-6">
               <h3>Add a password</h3>
-              <p>Create a MyFitnessPlan password, then verify your connected Google account.</p>
-              <p>
-                <label htmlFor="link-new-password">New password</label>
-                <br />
-                <input
-                  id="link-new-password"
-                  name="link-new-password"
-                  type="password"
-                  autoComplete="new-password"
-                  minLength={8}
-                  maxLength={128}
-                  value={newPassword}
-                  onChange={(event) => setNewPassword(event.target.value)}
-                />
+              <p className="mt-1 text-sm text-slate-600">
+                Step 1: Create the MyFitnessPlan password you want to use for future logins.
               </p>
-              <p>
-                <label htmlFor="link-confirm-password">Confirm new password</label>
-                <br />
-                <input
-                  id="link-confirm-password"
-                  name="link-confirm-password"
-                  type="password"
-                  autoComplete="new-password"
-                  minLength={8}
-                  maxLength={128}
-                  value={confirmPassword}
-                  onChange={(event) => setConfirmPassword(event.target.value)}
+              <div className="mt-4 grid max-w-2xl gap-4 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="link-new-password">New password</label>
+                  <input
+                    id="link-new-password"
+                    name="link-new-password"
+                    type="password"
+                    autoComplete="new-password"
+                    minLength={8}
+                    maxLength={128}
+                    value={newPassword}
+                    onChange={(event) => setNewPassword(event.target.value)}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="link-confirm-password">Confirm new password</label>
+                  <input
+                    id="link-confirm-password"
+                    name="link-confirm-password"
+                    type="password"
+                    autoComplete="new-password"
+                    minLength={8}
+                    maxLength={128}
+                    value={confirmPassword}
+                    onChange={(event) => setConfirmPassword(event.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="mt-5 rounded-lg border border-blue-200 bg-blue-50 p-4">
+                <p className="text-sm font-medium text-blue-900">
+                  Step 2: Click “Continue as…” below. That Google button verifies your account and
+                  finishes linking the password.
+                </p>
+                <GoogleIdentityButton
+                  ariaLabel="Verify Google to add a password"
+                  pendingMessage="Adding password…"
+                  onCredential={handlePasswordLink}
                 />
-              </p>
-              <GoogleIdentityButton
-                ariaLabel="Verify Google to add a password"
-                pendingMessage="Adding password…"
-                onCredential={handlePasswordLink}
-              />
+              </div>
             </div>
           ) : null}
         </>
       )}
-      {error === null ? null : <p role="alert">{error}</p>}
+      {error === null ? null : (
+        <p className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700" role="alert">
+          {error}
+        </p>
+      )}
+      {successMessage === null ? null : (
+        <p className="mt-4 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700" role="status">
+          {successMessage}
+        </p>
+      )}
     </section>
   );
 }

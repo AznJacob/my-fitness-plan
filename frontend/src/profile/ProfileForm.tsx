@@ -139,11 +139,14 @@ export function ProfileForm() {
   return (
     <section aria-labelledby="profile-heading">
       <h2 id="profile-heading">{hasSavedProfile ? "Edit your profile" : "Create your profile"}</h2>
-      <p>
+      <p className="mt-1 text-sm text-slate-600">
         Tell us about your general fitness preferences. This information does not replace medical
         advice.
       </p>
-      <form onSubmit={(event) => void handleSubmit(event)}>
+      <form
+        className="mt-5 grid gap-x-6 sm:grid-cols-2"
+        onSubmit={(event) => void handleSubmit(event)}
+      >
         <p>
           <label htmlFor="display-name">Display name (optional)</label>
           <br />
@@ -252,9 +255,20 @@ export function ProfileForm() {
             onChange={(event) => updateDraft("wellnessConstraints", event.target.value)}
           />
         </p>
-        {error === null ? null : <p role="alert">{error}</p>}
-        {successMessage === null ? null : <p role="status">{successMessage}</p>}
-        <button type="submit" disabled={submitting}>
+        {error === null ? null : (
+          <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700 sm:col-span-2" role="alert">
+            {error}
+          </p>
+        )}
+        {successMessage === null ? null : (
+          <p
+            className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700 sm:col-span-2"
+            role="status"
+          >
+            {successMessage}
+          </p>
+        )}
+        <button className="w-fit sm:col-span-2" type="submit" disabled={submitting}>
           {submitting ? "Saving…" : "Save profile"}
         </button>
       </form>

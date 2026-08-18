@@ -1,0 +1,39 @@
+@import "tailwindcss";
+
+@layer base {
+  button {
+    @apply cursor-pointer rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  input,
+  select,
+  textarea {
+    @apply mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100;
+  }
+
+  textarea {
+    @apply resize-y;
+  }
+
+  label {
+    @apply text-sm font-medium text-slate-700;
+  }
+}
+
+@layer components {
+  main section {
+    @apply rounded-xl border border-slate-200 bg-white p-6 shadow-sm;
+  }
+
+  main section h2 {
+    @apply text-xl font-semibold;
+  }
+
+  main section h3 {
+    @apply text-base font-semibold;
+  }
+
+  main form > p {
+    @apply mb-4;
+  }
+}

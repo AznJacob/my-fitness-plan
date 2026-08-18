@@ -38,9 +38,9 @@ export function AuthForm() {
   }
 
   return (
-    <section aria-labelledby="auth-heading">
+    <section aria-labelledby="auth-heading" className="max-w-lg">
       <h2 id="auth-heading">{isRegistration ? "Create an account" : "Log in"}</h2>
-      <form onSubmit={(event) => void handleSubmit(event)}>
+      <form className="mt-5" onSubmit={(event) => void handleSubmit(event)}>
         <p>
           <label htmlFor="email">Email</label>
           <br />
@@ -69,14 +69,23 @@ export function AuthForm() {
             onChange={(event) => setPassword(event.target.value)}
           />
         </p>
-        {error === null ? null : <p role="alert">{error}</p>}
+        {error === null ? null : (
+          <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700" role="alert">
+            {error}
+          </p>
+        )}
         <button type="submit" disabled={submitting}>
           {submitting ? "Please wait…" : isRegistration ? "Register" : "Log in"}
         </button>
       </form>
-      <p>
+      <p className="mt-4 text-sm text-slate-600">
         {isRegistration ? "Already have an account?" : "Need an account?"}{" "}
-        <button type="button" onClick={switchMode} disabled={submitting}>
+        <button
+          type="button"
+          className="bg-transparent px-1 text-blue-700 hover:bg-transparent hover:underline"
+          onClick={switchMode}
+          disabled={submitting}
+        >
           {isRegistration ? "Log in" : "Register"}
         </button>
       </p>

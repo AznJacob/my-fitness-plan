@@ -59,14 +59,18 @@ export function GoogleIdentityButton({
   }, []);
 
   if (GOOGLE_CLIENT_ID === "") {
-    return <p>Google Sign-In is not configured.</p>;
+    return <p className="mt-3 text-sm text-amber-700">Google Sign-In is not configured.</p>;
   }
 
   return (
-    <div>
+    <div className="mt-4 space-y-2">
       <div ref={buttonContainer} aria-label={ariaLabel} />
-      {loading ? <p>{pendingMessage}</p> : null}
-      {loadError === null ? null : <p role="alert">{loadError}</p>}
+      {loading ? <p className="text-sm text-slate-600">{pendingMessage}</p> : null}
+      {loadError === null ? null : (
+        <p className="text-sm text-red-700" role="alert">
+          {loadError}
+        </p>
+      )}
     </div>
   );
 }
