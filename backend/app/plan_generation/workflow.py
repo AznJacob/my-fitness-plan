@@ -17,6 +17,8 @@ from app.wellness.service import assess_profile_safety, calculate_profile_wellne
 
 _SYSTEM_INSTRUCTIONS = """Create a general-wellness plan that follows the response schema.
 Match the calculated number of workout sessions and do not exceed the calculated session duration.
+Keep the response concise: use exactly two exercises per session, exactly three meal ideas, and
+one short sentence for each guidance field. Avoid repeated explanations.
 Do not provide diagnosis, treatment, rehabilitation, medication or supplement directives.
 Do not prescribe calorie or macronutrient quantities because the profile does not support them.
 Use only the supplied profile as personalization data and never invent research or citations."""

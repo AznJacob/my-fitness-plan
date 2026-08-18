@@ -26,8 +26,8 @@ class Settings(BaseSettings):
     google_client_id: str | None = Field(default=None, repr=False)
     anthropic_api_key: SecretStr | None = Field(default=None, repr=False)
     anthropic_model: str = DEFAULT_ANTHROPIC_MODEL
-    anthropic_timeout_seconds: AnthropicTimeoutSeconds = 60
-    anthropic_max_output_tokens: AnthropicMaxOutputTokens = 6_000
+    anthropic_timeout_seconds: AnthropicTimeoutSeconds = 35
+    anthropic_max_output_tokens: AnthropicMaxOutputTokens = 1_000
     anthropic_max_retries: AnthropicMaxRetries = 0
     anthropic_temperature: AnthropicTemperature = 0.2
 

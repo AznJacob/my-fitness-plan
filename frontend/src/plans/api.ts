@@ -26,9 +26,10 @@ export interface PlanSummary {
   archived_at: string | null;
 }
 
-export interface PersistedPlan extends GeneratedPlan, PlanSummary {
-  profile_snapshot: PlanProfileSnapshot;
-}
+export type PersistedPlan = GeneratedPlan &
+  PlanSummary & {
+    profile_snapshot: PlanProfileSnapshot;
+  };
 
 export async function getPlanHistory(): Promise<PlanSummary[]> {
   const response = await apiRequest("/plans");

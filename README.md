@@ -116,7 +116,7 @@ Docker Compose constructs the backend's `DATABASE_URL` from these values and use
 
 Claude configuration is optional until plan generation is used. Put a real `ANTHROPIC_API_KEY` only
 in the ignored `.env` file. The committed template defaults to the pinned Claude Haiku 4.5 snapshot,
-a 60-second timeout, a 6,000-token output cap, and no automatic retries. Do not place the key in
+a 35-second timeout, a 1,000-token output cap, and no automatic retries. Do not place the key in
 frontend environment variables because browser-delivered values are public.
 
 Build and start the stack:

@@ -55,8 +55,8 @@ def test_settings_uses_authentication_defaults(
     assert settings.google_client_id is None
     assert settings.anthropic_api_key is None
     assert settings.anthropic_model == DEFAULT_ANTHROPIC_MODEL
-    assert settings.anthropic_timeout_seconds == 60
-    assert settings.anthropic_max_output_tokens == 6_000
+    assert settings.anthropic_timeout_seconds == 35
+    assert settings.anthropic_max_output_tokens == 1_000
     assert settings.anthropic_max_retries == 0
     assert settings.anthropic_temperature == 0.2
 

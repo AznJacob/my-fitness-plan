@@ -31,7 +31,12 @@ _WORKFLOW_STATUS_CODES = {
 }
 
 
-@router.post("/generate", response_model=PlanDetail, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/generate",
+    response_model=PlanDetail,
+    response_model_by_alias=False,
+    status_code=status.HTTP_201_CREATED,
+)
 def generate_plan(
     database_session: DatabaseSession,
     authenticated_session: AuthenticatedCsrfSession,

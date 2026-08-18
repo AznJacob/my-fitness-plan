@@ -14,8 +14,8 @@ returned through an API, or committed to the repository.
 
 Provider requests are bounded by configuration:
 
-- 60-second timeout, accepted range 5-300 seconds.
-- 6,000 maximum output tokens, accepted range 512-10,000.
+- 35-second timeout, accepted range 5-300 seconds.
+- 1,000 maximum output tokens, accepted range 512-10,000.
 - Zero automatic retries by default, with at most one configurable retry.
 - Temperature 0.2, accepted range 0-1.
 
@@ -27,16 +27,23 @@ and [model versioning documentation](https://platform.claude.com/docs/en/about-c
 
 ## Structured plan boundary
 
-`GeneratedPlan` is the only accepted provider-output shape. It contains a versioned title and
-overview, bounded workout sessions, exercise prescriptions, and bounded nutrition templates. Every
-model rejects undeclared fields. Exercises require repetitions or a duration, sessions stay within
-the application's 10-180 minute range, and collection sizes prevent unexpectedly large output.
+New generations use the concise `GeneratedPlan` schema version 2. It contains a title and overview,
+the exact scheduled workout sessions, two-to-three compact exercise prescriptions per session,
+three-to-four meal ideas, and short progression, recovery, daily-food, and hydration guidance.
+Every model rejects undeclared fields, sessions remain within the application's 10-180 minute range,
+and tight collection sizes support the 1,000-token response ceiling. Persisted schema-version-1
+plans retain a separate legacy validator and renderer so changing the provider contract does not
+invalidate history.
 
-The nutrition schema intentionally contains meal suggestions, hydration guidance, meal timing, and
-dietary-preference notes. It has no fields for calorie targets, macronutrient targets, diagnosis,
-treatment, supplements, or citations. The workout schema has no rehabilitation or medical-treatment
-fields. Application-owned disclaimers are also excluded because trusted application text should not
-come from the model.
+The provider-facing JSON schema uses short aliases for version-2 field names to reduce output-token
+overhead. Pydantic immediately converts those aliases back to descriptive application field names,
+and FastAPI responses, persistence, and the React UI never expose the abbreviated representation.
+
+The nutrition schema intentionally contains food suggestions and hydration guidance rather than
+individualized calorie or macronutrient targets. It has no fields for diagnosis, treatment,
+supplements, or citations. The workout schema has no rehabilitation or medical-treatment fields.
+Application-owned disclaimers are also excluded because trusted application text should not come
+from the model.
 
 `ClaudePlanRequest` keeps four inputs named separately before provider serialization:
 

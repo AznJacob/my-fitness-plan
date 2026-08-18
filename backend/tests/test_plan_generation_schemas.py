@@ -26,53 +26,32 @@ def valid_profile() -> ProfileInput:
 def valid_generated_plan() -> dict[str, object]:
     exercise = {
         "name": "Bodyweight squat",
-        "sets": 3,
-        "repetitions": "8-10",
-        "duration_seconds": None,
-        "rest_seconds": 60,
-        "instructions": "Use a comfortable range of motion and controlled tempo.",
+        "prescription": "3 sets of 8-10",
     }
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "title": "Three-day general fitness plan",
         "overview": "A balanced weekly routine using the available equipment.",
         "workout_plan": {
-            "summary": "Three full-body sessions with gradual progression.",
             "sessions": [
                 {
                     "day_label": "Day 1",
                     "focus": "Full body",
                     "duration_minutes": 45,
-                    "warm_up": [exercise],
-                    "main_workout": [exercise],
-                    "cool_down": [exercise],
+                    "exercises": [exercise, {**exercise, "name": "Dumbbell row"}],
                 }
             ],
             "progression_guidance": "Add repetitions before increasing resistance.",
             "recovery_guidance": "Leave time between sessions and adjust effort as needed.",
         },
         "nutrition_plan": {
-            "summary": "Flexible vegetarian meal suggestions using varied whole foods.",
-            "daily_templates": [
-                {
-                    "day_label": "Training day",
-                    "meals": [
-                        {
-                            "meal_name": "Breakfast",
-                            "foods": ["Oats", "Fruit", "Yogurt"],
-                            "guidance": "Choose portions based on appetite.",
-                        },
-                        {
-                            "meal_name": "Dinner",
-                            "foods": ["Lentils", "Rice", "Vegetables"],
-                            "guidance": "Include a variety of vegetables.",
-                        },
-                    ],
-                }
+            "meal_ideas": [
+                {"meal_name": "Breakfast", "foods": ["Oats", "Fruit"]},
+                {"meal_name": "Lunch", "foods": ["Lentils", "Rice"]},
+                {"meal_name": "Dinner", "foods": ["Beans", "Vegetables"]},
             ],
+            "daily_guidance": "Choose portions based on appetite.",
             "hydration_guidance": "Drink regularly and adjust for heat and activity.",
-            "meal_timing_guidance": "Use meal timing that fits the daily schedule.",
-            "dietary_preference_notes": "All suggestions are vegetarian.",
         },
     }
 
@@ -80,18 +59,18 @@ def valid_generated_plan() -> dict[str, object]:
 def test_generated_plan_accepts_complete_bounded_output() -> None:
     plan = GeneratedPlan.model_validate(valid_generated_plan())
 
-    assert plan.schema_version == 1
+    assert plan.schema_version == 2
     assert plan.workout_plan.sessions[0].duration_minutes == 45
-    assert plan.nutrition_plan.daily_templates[0].meals[0].foods[0] == "Oats"
+    assert plan.nutrition_plan.meal_ideas[0].foods[0] == "Oats"
 
 
 @pytest.mark.parametrize(
     "mutate",
     [
         lambda plan: plan.update({"unexpected": "value"}),
-        lambda plan: plan.update({"schema_version": 2}),
+        lambda plan: plan.update({"schema_version": 1}),
         lambda plan: plan["workout_plan"].update({"sessions": []}),
-        lambda plan: plan["nutrition_plan"].update({"daily_templates": []}),
+        lambda plan: plan["nutrition_plan"].update({"meal_ideas": []}),
     ],
 )
 def test_generated_plan_rejects_extra_versioned_or_empty_output(mutate: object) -> None:
@@ -102,13 +81,11 @@ def test_generated_plan_rejects_extra_versioned_or_empty_output(mutate: object) 
         GeneratedPlan.model_validate(payload)
 
 
-def test_exercise_requires_repetitions_or_duration() -> None:
+def test_compact_session_requires_at_least_two_exercises() -> None:
     payload = valid_generated_plan()
-    exercise = payload["workout_plan"]["sessions"][0]["main_workout"][0]  # type: ignore[index]
-    exercise["repetitions"] = None
-    exercise["duration_seconds"] = None
+    payload["workout_plan"]["sessions"][0]["exercises"] = []  # type: ignore[index]
 
-    with pytest.raises(ValidationError, match="repetitions or duration"):
+    with pytest.raises(ValidationError):
         GeneratedPlan.model_validate(payload)
 
 

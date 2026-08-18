@@ -6,6 +6,9 @@ import {
   generatePlan,
   type ExercisePrescription,
   type GeneratedPlan,
+  type LegacyExercisePrescription,
+  type LegacyGeneratedPlan,
+  type LegacyWorkoutSession,
   type WorkoutSession,
 } from "./api";
 import type { PersistedPlan } from "../plans/api";
@@ -69,7 +72,7 @@ function ProfileSummary({ profile }: { profile: Profile }) {
   );
 }
 
-function ExerciseList({ exercises }: { exercises: ExercisePrescription[] }) {
+function LegacyExerciseList({ exercises }: { exercises: LegacyExercisePrescription[] }) {
   return (
     <ul className="mt-2 space-y-2">
       {exercises.map((exercise, index) => {
@@ -93,7 +96,7 @@ function ExerciseList({ exercises }: { exercises: ExercisePrescription[] }) {
   );
 }
 
-function WorkoutSessionCard({ session }: { session: WorkoutSession }) {
+function LegacyWorkoutSessionCard({ session }: { session: LegacyWorkoutSession }) {
   return (
     <article className="rounded-xl border border-slate-200 p-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -103,16 +106,16 @@ function WorkoutSessionCard({ session }: { session: WorkoutSession }) {
         <span className="text-sm text-slate-500">{session.duration_minutes} minutes</span>
       </div>
       <h5 className="mt-4 text-sm font-semibold text-slate-700">Warm-up</h5>
-      <ExerciseList exercises={session.warm_up} />
+      <LegacyExerciseList exercises={session.warm_up} />
       <h5 className="mt-4 text-sm font-semibold text-slate-700">Main workout</h5>
-      <ExerciseList exercises={session.main_workout} />
+      <LegacyExerciseList exercises={session.main_workout} />
       <h5 className="mt-4 text-sm font-semibold text-slate-700">Cool-down</h5>
-      <ExerciseList exercises={session.cool_down} />
+      <LegacyExerciseList exercises={session.cool_down} />
     </article>
   );
 }
 
-export function GeneratedPlanDisplay({ plan }: { plan: GeneratedPlan }) {
+function LegacyGeneratedPlanDisplay({ plan }: { plan: LegacyGeneratedPlan }) {
   return (
     <div className="space-y-6">
       <section aria-labelledby="generated-plan-heading">
@@ -130,7 +133,7 @@ export function GeneratedPlanDisplay({ plan }: { plan: GeneratedPlan }) {
         <p className="mt-2 text-slate-700">{plan.workout_plan.summary}</p>
         <div className="mt-5 space-y-4">
           {plan.workout_plan.sessions.map((session, index) => (
-            <WorkoutSessionCard key={`${session.day_label}-${index}`} session={session} />
+            <LegacyWorkoutSessionCard key={`${session.day_label}-${index}`} session={session} />
           ))}
         </div>
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
@@ -174,6 +177,90 @@ export function GeneratedPlanDisplay({ plan }: { plan: GeneratedPlan }) {
         </div>
       </section>
     </div>
+  );
+}
+
+function CompactExerciseList({ exercises }: { exercises: ExercisePrescription[] }) {
+  return (
+    <ul className="mt-3 space-y-2">
+      {exercises.map((exercise, index) => (
+        <li key={`${exercise.name}-${index}`} className="rounded-lg bg-slate-50 p-3">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <p className="font-medium text-slate-900">{exercise.name}</p>
+            <p className="text-xs font-semibold text-slate-500">{exercise.prescription}</p>
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function CompactWorkoutSessionCard({ session }: { session: WorkoutSession }) {
+  return (
+    <article className="rounded-xl border border-slate-200 p-4">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h4 className="font-semibold text-slate-900">
+          {session.day_label}: {session.focus}
+        </h4>
+        <span className="text-sm text-slate-500">{session.duration_minutes} minutes</span>
+      </div>
+      <CompactExerciseList exercises={session.exercises} />
+    </article>
+  );
+}
+
+function CompactGeneratedPlanDisplay({
+  plan,
+}: {
+  plan: Extract<GeneratedPlan, { schema_version: 2 }>;
+}) {
+  return (
+    <div className="space-y-6">
+      <section aria-labelledby="generated-plan-heading">
+        <p className="text-sm font-semibold uppercase tracking-wide text-blue-700">
+          Generated plan
+        </p>
+        <h2 id="generated-plan-heading" className="mt-1">
+          {plan.title}
+        </h2>
+        <p className="mt-3 text-slate-700">{plan.overview}</p>
+      </section>
+      <section aria-labelledby="workout-plan-heading">
+        <h2 id="workout-plan-heading">Workout plan</h2>
+        <div className="mt-5 space-y-4">
+          {plan.workout_plan.sessions.map((session, index) => (
+            <CompactWorkoutSessionCard key={`${session.day_label}-${index}`} session={session} />
+          ))}
+        </div>
+        <div className="mt-5 grid gap-3 sm:grid-cols-2">
+          <SummaryItem label="Progression" value={plan.workout_plan.progression_guidance} />
+          <SummaryItem label="Recovery" value={plan.workout_plan.recovery_guidance} />
+        </div>
+      </section>
+      <section aria-labelledby="nutrition-plan-heading">
+        <h2 id="nutrition-plan-heading">Nutrition ideas</h2>
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          {plan.nutrition_plan.meal_ideas.map((meal, index) => (
+            <article key={`${meal.meal_name}-${index}`} className="rounded-lg bg-slate-50 p-3">
+              <h3 className="font-medium text-slate-900">{meal.meal_name}</h3>
+              <p className="mt-1 text-sm text-slate-700">{meal.foods.join(", ")}</p>
+            </article>
+          ))}
+        </div>
+        <div className="mt-5 grid gap-3 sm:grid-cols-2">
+          <SummaryItem label="Daily guidance" value={plan.nutrition_plan.daily_guidance} />
+          <SummaryItem label="Hydration" value={plan.nutrition_plan.hydration_guidance} />
+        </div>
+      </section>
+    </div>
+  );
+}
+
+export function GeneratedPlanDisplay({ plan }: { plan: GeneratedPlan }) {
+  return plan.schema_version === 1 ? (
+    <LegacyGeneratedPlanDisplay plan={plan} />
+  ) : (
+    <CompactGeneratedPlanDisplay plan={plan} />
   );
 }
 
@@ -238,7 +325,8 @@ export function PlanGenerationView({
       <section aria-labelledby="plan-generation-heading">
         <h2 id="plan-generation-heading">Generate your plan</h2>
         <p className="mt-2 text-sm text-slate-600">
-          Review the saved profile Claude will use. Generation may take up to a minute.
+          Review the saved profile Claude will use. Generation uses a concise format with a
+          35-second provider timeout.
         </p>
 
         {profileState.status === "loading" ? (

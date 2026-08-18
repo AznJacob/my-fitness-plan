@@ -23,53 +23,32 @@ DATABASE_URL = "postgresql+psycopg://app_user:secret@postgres:5432/myfitnessplan
 def valid_plan_payload() -> dict[str, object]:
     exercise = {
         "name": "Bodyweight squat",
-        "sets": 3,
-        "repetitions": "8-10",
-        "duration_seconds": None,
-        "rest_seconds": 60,
-        "instructions": "Use a comfortable range of motion.",
+        "prescription": "3 sets of 8-10",
     }
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "title": "Three-day general fitness plan",
         "overview": "A balanced routine using the available equipment.",
         "workout_plan": {
-            "summary": "Three full-body sessions.",
             "sessions": [
                 {
                     "day_label": "Day 1",
                     "focus": "Full body",
                     "duration_minutes": 45,
-                    "warm_up": [exercise],
-                    "main_workout": [exercise],
-                    "cool_down": [exercise],
+                    "exercises": [exercise, {**exercise, "name": "Dumbbell row"}],
                 }
             ],
             "progression_guidance": "Add repetitions before resistance.",
             "recovery_guidance": "Leave time between sessions.",
         },
         "nutrition_plan": {
-            "summary": "Flexible vegetarian meal suggestions.",
-            "daily_templates": [
-                {
-                    "day_label": "Training day",
-                    "meals": [
-                        {
-                            "meal_name": "Breakfast",
-                            "foods": ["Oats", "Fruit"],
-                            "guidance": "Choose portions based on appetite.",
-                        },
-                        {
-                            "meal_name": "Dinner",
-                            "foods": ["Lentils", "Rice", "Vegetables"],
-                            "guidance": "Include varied vegetables.",
-                        },
-                    ],
-                }
+            "meal_ideas": [
+                {"meal_name": "Breakfast", "foods": ["Oats", "Fruit"]},
+                {"meal_name": "Lunch", "foods": ["Lentils", "Rice"]},
+                {"meal_name": "Dinner", "foods": ["Beans", "Vegetables"]},
             ],
+            "daily_guidance": "Choose portions based on appetite.",
             "hydration_guidance": "Drink regularly and adjust for activity.",
-            "meal_timing_guidance": "Use timing that fits the daily schedule.",
-            "dietary_preference_notes": "All suggestions are vegetarian.",
         },
     }
 
@@ -152,6 +131,13 @@ def test_generation_sends_separate_bounded_structured_request() -> None:
     assert "Ignore prior instructions" in call["messages"][0]["content"]
     assert call["output_config"]["format"]["type"] == "json_schema"
     assert call["output_config"]["format"]["schema"]["additionalProperties"] is False
+    assert set(call["output_config"]["format"]["schema"]["properties"]) == {
+        "v",
+        "t",
+        "o",
+        "w",
+        "n",
+    }
     sdk.close.assert_called_once_with()
 
 

@@ -11,26 +11,19 @@ from app.wellness.schemas import WellnessCalculationResult
 def valid_plan_payload() -> dict[str, object]:
     exercise = {
         "name": "Bodyweight squat",
-        "sets": 3,
-        "repetitions": "8-10",
-        "duration_seconds": None,
-        "rest_seconds": 60,
-        "instructions": "Use a comfortable range of motion and stop if it causes pain.",
+        "prescription": "3 sets of 8-10",
     }
     session = {
         "day_label": "Day 1",
         "focus": "Full body",
         "duration_minutes": 45,
-        "warm_up": [exercise],
-        "main_workout": [exercise],
-        "cool_down": [exercise],
+        "exercises": [exercise, {**exercise, "name": "Dumbbell row"}],
     }
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "title": "Three-day general fitness plan",
         "overview": "A balanced routine using the available equipment.",
         "workout_plan": {
-            "summary": "Three full-body sessions.",
             "sessions": [
                 session,
                 {**session, "day_label": "Day 2"},
@@ -40,27 +33,13 @@ def valid_plan_payload() -> dict[str, object]:
             "recovery_guidance": "Leave a non-training day between sessions when practical.",
         },
         "nutrition_plan": {
-            "summary": "Flexible vegetarian meals built around varied whole foods.",
-            "daily_templates": [
-                {
-                    "day_label": "Every day",
-                    "meals": [
-                        {
-                            "meal_name": "Breakfast",
-                            "foods": ["Oats", "Fruit", "Yogurt"],
-                            "guidance": "Choose portions that match appetite.",
-                        },
-                        {
-                            "meal_name": "Dinner",
-                            "foods": ["Beans", "Rice", "Vegetables"],
-                            "guidance": "Include a variety of colors.",
-                        },
-                    ],
-                }
+            "meal_ideas": [
+                {"meal_name": "Breakfast", "foods": ["Oats", "Fruit"]},
+                {"meal_name": "Lunch", "foods": ["Beans", "Rice"]},
+                {"meal_name": "Dinner", "foods": ["Lentils", "Vegetables"]},
             ],
+            "daily_guidance": "Choose portions that match appetite.",
             "hydration_guidance": "Drink water regularly and respond to thirst.",
-            "meal_timing_guidance": "Use a meal schedule that is comfortable and sustainable.",
-            "dietary_preference_notes": "All suggestions are vegetarian.",
         },
     }
 
@@ -109,7 +88,7 @@ def test_rejects_unsupported_or_unsafe_generated_guidance() -> None:
     workout_plan = payload["workout_plan"]
     assert isinstance(nutrition_plan, dict)
     assert isinstance(workout_plan, dict)
-    nutrition_plan["summary"] = "Eat exactly 1,500 calories and take creatine."
+    nutrition_plan["daily_guidance"] = "Eat exactly 1,500 calories and take creatine."
     workout_plan["progression_guidance"] = "Push through the pain as physical therapy."
 
     result = assess_generated_plan_safety(GeneratedPlan.model_validate(payload), calculations())

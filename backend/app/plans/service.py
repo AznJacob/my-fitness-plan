@@ -7,10 +7,24 @@ from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.models import Plan, User
-from app.plan_generation.schemas import GeneratedPlan, NutritionPlan, WorkoutPlan
+from app.plan_generation.schemas import (
+    GeneratedPlan,
+    LegacyGeneratedPlan,
+    LegacyNutritionPlan,
+    LegacyWorkoutPlan,
+    NutritionPlan,
+    WorkoutPlan,
+)
 from app.plan_generation.workflow import GeneratedPlanResult
 from app.plans.errors import ArchivedPlanActivationError, PlanNotFoundError
-from app.plans.schemas import PlanDetail, PlanProfileSnapshot, PlanStatus, PlanSummary
+from app.plans.schemas import (
+    LegacyPlanDetail,
+    PersistedPlanDetail,
+    PlanDetail,
+    PlanProfileSnapshot,
+    PlanStatus,
+    PlanSummary,
+)
 
 
 def persist_generated_plan(
@@ -36,7 +50,10 @@ def persist_generated_plan(
     )
     database_session.add(stored_plan)
     database_session.flush()
-    return plan_detail(stored_plan)
+    detail = plan_detail(stored_plan)
+    if not isinstance(detail, PlanDetail):  # pragma: no cover - persisted version is fixed above
+        raise RuntimeError("Newly generated plans must use the current schema version.")
+    return detail
 
 
 def list_plans(database_session: Session, user: User) -> list[PlanSummary]:
@@ -46,11 +63,11 @@ def list_plans(database_session: Session, user: User) -> list[PlanSummary]:
     return [plan_summary(plan) for plan in plans]
 
 
-def get_plan_detail(database_session: Session, user: User, plan_id: UUID) -> PlanDetail:
+def get_plan_detail(database_session: Session, user: User, plan_id: UUID) -> PersistedPlanDetail:
     return plan_detail(_get_owned_plan(database_session, user, plan_id))
 
 
-def activate_plan(database_session: Session, user: User, plan_id: UUID) -> PlanDetail:
+def activate_plan(database_session: Session, user: User, plan_id: UUID) -> PersistedPlanDetail:
     """Serialize active-plan changes per user and preserve the single-active invariant."""
     _lock_user(database_session, user)
     plan = _get_owned_plan(database_session, user, plan_id, for_update=True)
@@ -72,7 +89,7 @@ def activate_plan(database_session: Session, user: User, plan_id: UUID) -> PlanD
     return plan_detail(plan)
 
 
-def archive_plan(database_session: Session, user: User, plan_id: UUID) -> PlanDetail:
+def archive_plan(database_session: Session, user: User, plan_id: UUID) -> PersistedPlanDetail:
     """Archive an owned plan; archived plans are retained but cannot be reactivated."""
     _lock_user(database_session, user)
     plan = _get_owned_plan(database_session, user, plan_id, for_update=True)
@@ -94,17 +111,21 @@ def plan_summary(plan: Plan) -> PlanSummary:
     )
 
 
-def plan_detail(plan: Plan) -> PlanDetail:
-    generated_plan = GeneratedPlan.model_validate(
+def plan_detail(plan: Plan) -> PersistedPlanDetail:
+    plan_model = LegacyGeneratedPlan if plan.schema_version == 1 else GeneratedPlan
+    workout_model = LegacyWorkoutPlan if plan.schema_version == 1 else WorkoutPlan
+    nutrition_model = LegacyNutritionPlan if plan.schema_version == 1 else NutritionPlan
+    detail_model = LegacyPlanDetail if plan.schema_version == 1 else PlanDetail
+    generated_plan = plan_model.model_validate(
         {
             "schema_version": plan.schema_version,
             "title": plan.title,
             "overview": plan.overview,
-            "workout_plan": WorkoutPlan.model_validate(plan.workout_plan),
-            "nutrition_plan": NutritionPlan.model_validate(plan.nutrition_plan),
+            "workout_plan": workout_model.model_validate(plan.workout_plan),
+            "nutrition_plan": nutrition_model.model_validate(plan.nutrition_plan),
         }
     )
-    return PlanDetail(
+    return detail_model(
         **generated_plan.model_dump(mode="python"),
         id=plan.id,
         status=PlanStatus(plan.status),

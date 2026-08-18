@@ -67,27 +67,20 @@ def valid_profile(**overrides: object) -> dict[str, object]:
 def valid_generated_plan() -> GeneratedPlan:
     exercise = {
         "name": "Bodyweight squat",
-        "sets": 3,
-        "repetitions": "8-10",
-        "duration_seconds": None,
-        "rest_seconds": 60,
-        "instructions": "Use a comfortable range of motion.",
+        "prescription": "3 sets of 8-10",
     }
     session = {
         "day_label": "Day 1",
         "focus": "Full body",
         "duration_minutes": 45,
-        "warm_up": [exercise],
-        "main_workout": [exercise],
-        "cool_down": [exercise],
+        "exercises": [exercise, {**exercise, "name": "Dumbbell row"}],
     }
     return GeneratedPlan.model_validate(
         {
-            "schema_version": 1,
+            "schema_version": 2,
             "title": "Three-day general fitness plan",
             "overview": "A balanced routine using the available equipment.",
             "workout_plan": {
-                "summary": "Three full-body sessions.",
                 "sessions": [
                     session,
                     {**session, "day_label": "Day 2"},
@@ -97,27 +90,13 @@ def valid_generated_plan() -> GeneratedPlan:
                 "recovery_guidance": "Leave non-training days between sessions.",
             },
             "nutrition_plan": {
-                "summary": "Flexible vegetarian meals using varied whole foods.",
-                "daily_templates": [
-                    {
-                        "day_label": "Every day",
-                        "meals": [
-                            {
-                                "meal_name": "Breakfast",
-                                "foods": ["Oats", "Fruit"],
-                                "guidance": "Choose portions that match appetite.",
-                            },
-                            {
-                                "meal_name": "Dinner",
-                                "foods": ["Beans", "Rice", "Vegetables"],
-                                "guidance": "Include a variety of colors.",
-                            },
-                        ],
-                    }
+                "meal_ideas": [
+                    {"meal_name": "Breakfast", "foods": ["Oats", "Fruit"]},
+                    {"meal_name": "Lunch", "foods": ["Beans", "Rice"]},
+                    {"meal_name": "Dinner", "foods": ["Lentils", "Vegetables"]},
                 ],
+                "daily_guidance": "Choose portions that match appetite.",
                 "hydration_guidance": "Drink water regularly and respond to thirst.",
-                "meal_timing_guidance": "Choose a comfortable, sustainable schedule.",
-                "dietary_preference_notes": "All suggestions are vegetarian.",
             },
         }
     )
@@ -282,7 +261,7 @@ def test_unsafe_generated_content_is_rejected(
     register(generation_client)
     save_profile(generation_client)
     unsafe_plan = valid_generated_plan().model_copy(deep=True)
-    unsafe_plan.nutrition_plan.summary = "Eat exactly 1,200 calories every day."
+    unsafe_plan.nutrition_plan.daily_guidance = "Eat exactly 1,200 calories every day."
     monkeypatch.setattr(workflow, "generate_structured_plan", lambda *_args: unsafe_plan)
 
     response = generation_client.post("/plans/generate", headers=csrf_headers(generation_client))
