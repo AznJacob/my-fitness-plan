@@ -45,7 +45,38 @@ come from the model.
 - Calculated values contain deterministic Python results.
 - Profile data contains bounded but untrusted user preferences.
 
-Stage 8.2 will serialize these sections, call Anthropic structured outputs, validate the returned
-content again with Pydantic, and map provider and validation failures into application errors.
+Stage 8.2 serializes these sections, calls Anthropic structured outputs, validates the returned
+content again with Pydantic, and maps provider and validation failures into application errors.
 Anthropic documents structured outputs for Claude Haiku 4.5 in its
 [structured outputs guide](https://platform.claude.com/docs/en/build-with-claude/structured-outputs).
+
+## Stage 8.2: generation and validation
+
+`generate_structured_plan` owns one provider attempt. It creates the bounded client, sends the
+application's transformed `GeneratedPlan` JSON Schema through `output_config.format`, validates the
+response, and always closes the SDK client. The Anthropic SDK's public `transform_schema` helper
+removes schema features unsupported by constrained decoding; the application still applies the full
+Pydantic model afterward, so provider compatibility does not weaken the acceptance boundary.
+
+The system prompt contains a fixed application-owned safety and prompt-injection boundary followed
+by the caller's bounded system instructions. The user message contains three plainly labeled
+sections: application context, calculated-values JSON, and profile-data JSON. Profile strings remain
+JSON-encoded data. Instructions embedded in those fields are not moved into the system prompt.
+
+The response must contain exactly one non-empty text block with one JSON value. Markdown fences,
+multiple text blocks, partial output, and other malformed formats are rejected rather than stripped,
+combined, retried, or repaired. Parsed JSON is treated as untrusted and must pass `GeneratedPlan`
+validation again before it can leave the service.
+
+Failures use stable application codes for missing configuration, timeout, network failure, provider
+rejection or refusal, empty output, invalid JSON, schema violations, truncation, and unexpected
+response structure. Public messages do not contain provider response bodies, API keys, or profile
+data. Milestone 9 will map these codes to explicit protected-API responses.
+
+## Current limitations
+
+Milestone 8 has no FastAPI generation endpoint, React workflow, plan persistence, research
+retrieval, or citations. The provider interaction is verified with deterministic mocks; no paid API
+request has been made. A real Haiku call requires explicit approval during later end-to-end
+verification. Schema validation establishes structural correctness, while milestone 9 must still
+validate generated text against the general-wellness content boundary.

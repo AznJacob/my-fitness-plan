@@ -350,6 +350,10 @@ Stage 8.1 Claude configuration, bounded client behavior, strict workout and nutr
 prompt-section boundaries are documented in
 [`docs/milestone-8-claude-integration.md`](docs/milestone-8-claude-integration.md). No real provider
 request is made by Stage 8.1.
+The backend structured-generation service now makes one bounded provider attempt, keeps system and
+data prompt sections separate, and rejects provider failures, malformed JSON, truncated output, and
+schema violations without repair or automatic retry. It is not exposed through an API route yet,
+and no paid Claude request is made by automated verification.
 
 ### Code quality checks
 
