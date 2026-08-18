@@ -1,4 +1,5 @@
 import { AuthForm } from "./auth/AuthForm";
+import { AccountLinking } from "./auth/AccountLinking";
 import { useAuth } from "./auth/useAuth";
 import { ProfileForm } from "./profile/ProfileForm";
 
@@ -28,6 +29,7 @@ export function App() {
               Log out
             </button>
           </section>
+          <AccountLinking />
           <ProfileForm />
         </>
       ) : (

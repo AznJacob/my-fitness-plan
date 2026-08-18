@@ -324,12 +324,15 @@ docker compose up -d --build --force-recreate backend frontend
 The simple authentication screen will then show Google's standard button. A Google account whose
 normalized email is already claimed by a password account is deliberately rejected during normal
 sign-in. Automatic linking based only on matching email could allow account takeover; linking is a
-separate authenticated and freshly reauthenticated operation. Its React UI is part of milestone 6
-and is not implemented yet.
+separate authenticated and freshly reauthenticated operation. The authenticated React view shows
+connected methods and lets the user add the missing method through that explicit flow.
 
 The automated security coverage, manual checks, scope decisions, and deferred deployment
 protections are recorded in
 [`docs/authentication-verification.md`](docs/authentication-verification.md).
+Milestone 6 profile ownership, account-linking boundaries, frontend data flow, and remaining
+hardening are summarized in
+[`docs/milestone-6-architecture.md`](docs/milestone-6-architecture.md).
 
 ### Code quality checks
 

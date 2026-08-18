@@ -17,6 +17,7 @@ from app.auth.google import (
     InvalidGoogleTokenError,
     VerifiedGoogleIdentity,
 )
+from app.auth.service import revoke_session
 from app.auth.tokens import generate_token, hash_token
 from app.models import AuthenticationIdentity, User, UserSession
 
@@ -287,6 +288,15 @@ def test_revoked_session_is_rejected(auth_client: TestClient) -> None:
         stored_session.revoked_at = datetime.now(UTC)
 
     assert auth_client.get("/protected").status_code == 401
+
+
+def test_revocation_never_precedes_a_database_timestamp_from_a_faster_clock() -> None:
+    future_created_at = datetime.now(UTC) + timedelta(seconds=30)
+    user_session = UserSession(created_at=future_created_at)
+
+    revoke_session(user_session)
+
+    assert user_session.revoked_at == future_created_at
 
 
 def test_cors_allows_only_documented_local_origin(auth_client: TestClient) -> None:

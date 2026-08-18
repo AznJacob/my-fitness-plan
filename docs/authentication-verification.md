@@ -1,8 +1,7 @@
-# Authentication verification
+# Authentication and profile verification
 
-Milestone 5 is complete for MyFitnessPlan's documented local portfolio environment. This record
-separates tested behavior from protections that would still be required for an internet-facing
-deployment.
+This record separates behavior implemented through milestone 6 from protections that would still
+be required for an internet-facing deployment.
 
 ## Automated coverage
 
@@ -22,6 +21,9 @@ The backend suite verifies:
   invalid signatures, and public-key retrieval failures.
 - New and returning Google identities, both directions of password/Google email collision, absence
   of automatic linking, missing Google configuration, and use of the same application session.
+- Explicit linking in both directions, fresh reauthentication, immutable-subject ownership,
+  already-owned identity rejection, session-bound CSRF, and login through either linked method.
+- Protected profile creation, retrieval, replacement, input bounds, CSRF, and per-user ownership.
 - The complete Alembic revision chain and model/schema alignment against an isolated empty
   PostgreSQL database.
 
@@ -42,13 +44,26 @@ On August 13, 2026, the repository owner verified the Docker Compose browser flo
 Automated integration tests, rather than a real external account, verify collision and provider
 failure cases so those tests remain deterministic.
 
+On August 17, 2026, the rebuilt Docker Compose stack was migrated to the current head and all three
+services reached their health checks. Automated browser control was unavailable in the execution
+environment, so the new profile and linking UI has not been claimed as manually verified.
+
+Before marking milestone 6 complete, verify in a local browser:
+
+- Create and edit a profile, then refresh and confirm the saved values reload.
+- Sign in as a different user and confirm the first profile is not visible.
+- Confirm a profile save without the correct CSRF token is rejected.
+- Link the missing provider after fresh reauthentication, then log out and sign in through each
+  linked method.
+- Confirm logout returns to the authentication form and refresh does not restore the revoked
+  session.
+
 ## Scope decision
 
-**Required now:** No remaining work for milestone 5 in the supported local environment.
+**Required now:** Complete the short browser checklist above before marking milestone 6 complete.
 
-**Valuable next:** Milestone 6 profile APIs and forms should reuse `CurrentUser` and enforce that
-every profile operation belongs to that authenticated user. Secure identity linking can be designed
-there as a separate reauthentication flow.
+**Valuable next:** After manual verification, begin milestone 7 deterministic wellness calculations
+without extending the profile form into plan generation yet.
 
 **Defer:** An internet-facing deployment would still require TLS and `Secure` cookies, trusted-proxy
 configuration, rate limiting and credential-stuffing defenses, stronger security headers,

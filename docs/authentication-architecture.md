@@ -1,8 +1,7 @@
 # Authentication architecture
 
-This document records the implemented security design for milestone 5. The authentication milestone
-is complete for the documented local portfolio environment; it is not a claim of production
-readiness.
+This document records the authentication design implemented through milestone 6 for the documented
+local portfolio environment. It is not a claim of production readiness.
 
 ## Trust boundaries
 
@@ -20,9 +19,11 @@ token is uniformly random and unguessable. Human-chosen passwords require a deli
 memory-hard Argon2id hash instead.
 
 Sessions have a seven-day absolute lifetime and do not slide on activity. Logout revokes the current
-session in PostgreSQL and clears its cookies. Multiple devices may hold independent sessions. A
-session is rejected when its token is missing, malformed, unknown, expired, or revoked. Automated
-cleanup of old rows is deferred until production operations work.
+session in PostgreSQL and clears its cookies. The revocation timestamp is never allowed to precede
+the database-created session timestamp, which tolerates small clock differences between the
+application and PostgreSQL processes. Multiple devices may hold independent sessions. A session is
+rejected when its token is missing, malformed, unknown, expired, or revoked. Automated cleanup of
+old rows is deferred until production operations work.
 
 ## Cookies, CORS, and CSRF
 
@@ -160,6 +161,10 @@ user is never reassigned. The service performs explicit ownership checks, while 
 provider-subject and per-user/provider constraints remain the final defense against concurrent
 races. `GET /auth/methods` reports the connected methods for the authenticated user without exposing
 credential details.
+
+The authenticated React view displays those connected methods and only the action for the missing
+provider. It reuses Google Identity Services for the required fresh Google proof. The returned token
+is passed directly to the linking request and is not decoded, persisted, or stored in React state.
 
 ## Typed configuration
 

@@ -350,7 +350,7 @@ def get_authenticated_session(database_session: Session, raw_token: str | None) 
 
 def revoke_session(user_session: UserSession) -> None:
     """Revoke a session that has already passed authentication and CSRF checks."""
-    user_session.revoked_at = datetime.now(UTC)
+    user_session.revoked_at = max(datetime.now(UTC), user_session.created_at)
 
 
 __all__ = [
