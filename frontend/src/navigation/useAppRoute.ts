@@ -1,28 +1,44 @@
 import { useCallback, useEffect, useState } from "react";
 
-export type AppRoute = "generate" | "profile" | "account" | "not-found";
+export type AppRoute =
+  | { name: "generate" }
+  | { name: "plans" }
+  | { name: "plan-detail"; planId: string }
+  | { name: "profile" }
+  | { name: "account" }
+  | { name: "not-found" };
 
-const ROUTE_PATHS: Record<Exclude<AppRoute, "not-found">, string> = {
+export type NavigableRoute = Exclude<AppRoute, { name: "not-found" }>;
+
+const ROUTE_PATHS = {
   generate: "/plans/new",
+  plans: "/plans",
   profile: "/profile",
   account: "/account",
-};
+} as const;
 
 function routeFromPathname(pathname: string): AppRoute {
   if (pathname === "/" || pathname === ROUTE_PATHS.generate) {
-    return "generate";
+    return { name: "generate" };
+  }
+  if (pathname === ROUTE_PATHS.plans) {
+    return { name: "plans" };
   }
   if (pathname === ROUTE_PATHS.profile) {
-    return "profile";
+    return { name: "profile" };
   }
   if (pathname === ROUTE_PATHS.account) {
-    return "account";
+    return { name: "account" };
   }
-  return "not-found";
+  const planDetailMatch = /^\/plans\/([0-9a-fA-F-]{36})$/.exec(pathname);
+  if (planDetailMatch?.[1] !== undefined) {
+    return { name: "plan-detail", planId: planDetailMatch[1] };
+  }
+  return { name: "not-found" };
 }
 
-export function pathForRoute(route: Exclude<AppRoute, "not-found">): string {
-  return ROUTE_PATHS[route];
+export function pathForRoute(route: NavigableRoute): string {
+  return route.name === "plan-detail" ? `/plans/${route.planId}` : ROUTE_PATHS[route.name];
 }
 
 export function useAppRoute() {
@@ -34,7 +50,7 @@ export function useAppRoute() {
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
 
-  const navigate = useCallback((nextRoute: Exclude<AppRoute, "not-found">) => {
+  const navigate = useCallback((nextRoute: NavigableRoute) => {
     const nextPath = pathForRoute(nextRoute);
     if (window.location.pathname !== nextPath) {
       window.history.pushState({}, "", nextPath);

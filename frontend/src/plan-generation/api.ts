@@ -1,4 +1,5 @@
 import { csrfProtectedMutation } from "../auth/api";
+import type { PersistedPlan } from "../plans/api";
 
 export interface ExercisePrescription {
   name: string;
@@ -52,7 +53,7 @@ export interface GeneratedPlan {
   nutrition_plan: NutritionPlan;
 }
 
-export async function generatePlan(): Promise<GeneratedPlan> {
+export async function generatePlan(): Promise<PersistedPlan> {
   const response = await csrfProtectedMutation("/plans/generate", "POST");
-  return (await response.json()) as GeneratedPlan;
+  return (await response.json()) as PersistedPlan;
 }

@@ -68,8 +68,10 @@ Development follows small, dependency-ordered milestones:
 
 A milestone is complete only when its behavior is implemented, tested, documented, and manually verified. Later capabilities should not be described as complete prematurely.
 
-Milestones 1 through 9 are complete. Stage 10.1 now persists schema-validated workout and nutrition
-plans and exposes their protected lifecycle APIs; the React lifecycle experience is next.
+Milestones 1 through 10 are complete. The local working version persists schema-validated workout
+and nutrition plans, exposes protected lifecycle APIs, and provides the React lifecycle experience.
+Milestone 11 research retrieval/pgvector and Milestone 12 production infrastructure are deferred
+until explicitly requested; this application is not production-ready.
 
 ## Database model
 
@@ -375,21 +377,26 @@ No paid Claude request is made by automated verification.
 Authenticated frontend workflows now use simple browser-history routes:
 
 - `/plans/new` reviews the saved profile, starts protected generation, presents explicit loading
-  and failure states, and renders the validated workout and nutrition result with a wellness
-  disclaimer.
+  and failure states, renders the validated workout and nutrition result with a wellness
+  disclaimer, and links to the saved plan.
+- `/plans` restores the persisted plan history after refresh and clearly identifies the active
+  plan.
+- `/plans/{plan_id}` restores a complete saved plan and its generation snapshot, and provides the
+  permitted active-selection and archive actions.
 - `/profile` creates or edits the saved planning profile.
 - `/account` manages connected password and Google sign-in methods.
 
-The Stage 9.2 view still holds its displayed result in browser memory, but Stage 10.1 now persists
-newly generated plans in PostgreSQL. React history, detail, active-plan, and archive views belong to
-Stage 10.2.
+Lifecycle mutations reuse the session-bound CSRF client. Archived plans remain readable but cannot
+be selected as active again. The interface reflects these backend rules and does not accept or send
+a user ID for ownership.
 
-Milestone 9 is complete. The protected workflow derives profile ownership from the authenticated
-session, runs deterministic safety assessment and calculations before Claude, validates structured
-provider output, applies a second generated-content safety gate, and presents the resulting plan in
-React. Automated checks mock Claude and do not consume API credits. Research retrieval, pgvector,
-and citations are not implemented, and the application is not production-ready. Stage 10.1 plan
-persistence and lifecycle architecture is documented in
+Milestones 9 and 10 are complete. The protected workflow derives profile ownership from the
+authenticated session, runs deterministic safety assessment and calculations before Claude,
+validates structured provider output, applies a second generated-content safety gate, and presents
+the resulting plan in React. Automated checks mock Claude and do not consume API credits. Research
+retrieval, pgvector, and citations are not implemented, and the application is not production-ready.
+Plan persistence, lifecycle architecture, React routes, and final verification scope are documented
+in
 [`docs/milestone-10-plan-lifecycle.md`](docs/milestone-10-plan-lifecycle.md).
 
 ### Code quality checks

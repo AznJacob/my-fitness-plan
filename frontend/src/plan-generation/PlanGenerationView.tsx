@@ -8,6 +8,7 @@ import {
   type GeneratedPlan,
   type WorkoutSession,
 } from "./api";
+import type { PersistedPlan } from "../plans/api";
 
 type ProfileState =
   | { status: "loading" }
@@ -18,7 +19,7 @@ type ProfileState =
 type GenerationState =
   | { status: "idle" }
   | { status: "loading" }
-  | { status: "success"; plan: GeneratedPlan }
+  | { status: "success"; plan: PersistedPlan }
   | { status: "validation-error"; message: string }
   | { status: "provider-unavailable"; message: string }
   | { status: "error"; message: string };
@@ -111,7 +112,7 @@ function WorkoutSessionCard({ session }: { session: WorkoutSession }) {
   );
 }
 
-function GeneratedPlanDisplay({ plan }: { plan: GeneratedPlan }) {
+export function GeneratedPlanDisplay({ plan }: { plan: GeneratedPlan }) {
   return (
     <div className="space-y-6">
       <section aria-labelledby="generated-plan-heading">
@@ -176,7 +177,13 @@ function GeneratedPlanDisplay({ plan }: { plan: GeneratedPlan }) {
   );
 }
 
-export function PlanGenerationView({ onEditProfile }: { onEditProfile: () => void }) {
+export function PlanGenerationView({
+  onEditProfile,
+  onViewPlan,
+}: {
+  onEditProfile: () => void;
+  onViewPlan: (planId: string) => void;
+}) {
   const [profileState, setProfileState] = useState<ProfileState>({ status: "loading" });
   const [generationState, setGenerationState] = useState<GenerationState>({ status: "idle" });
 
@@ -301,7 +308,25 @@ export function PlanGenerationView({ onEditProfile }: { onEditProfile: () => voi
       </section>
 
       {generationState.status === "success" ? (
-        <GeneratedPlanDisplay plan={generationState.plan} />
+        <>
+          <section
+            aria-labelledby="saved-plan-heading"
+            className="border-emerald-200 bg-emerald-50"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 id="saved-plan-heading">Plan saved</h2>
+                <p className="mt-1 text-sm text-emerald-900">
+                  This plan is inactive until you choose to make it your active plan.
+                </p>
+              </div>
+              <button type="button" onClick={() => onViewPlan(generationState.plan.id)}>
+                Manage saved plan
+              </button>
+            </div>
+          </section>
+          <GeneratedPlanDisplay plan={generationState.plan} />
+        </>
       ) : null}
     </div>
   );

@@ -4,6 +4,8 @@ import { useAuth } from "./auth/useAuth";
 import { AppNavigation } from "./navigation/AppNavigation";
 import { useAppRoute } from "./navigation/useAppRoute";
 import { PlanGenerationView } from "./plan-generation/PlanGenerationView";
+import { PlanDetailView } from "./plans/PlanDetailView";
+import { PlanHistoryView } from "./plans/PlanHistoryView";
 import { ProfileForm } from "./profile/ProfileForm";
 
 export function App() {
@@ -58,11 +60,25 @@ export function App() {
               )}
             </section>
             <AppNavigation currentRoute={route} navigate={navigate} />
-            {route === "generate" ? (
-              <PlanGenerationView onEditProfile={() => navigate("profile")} />
-            ) : route === "profile" ? (
+            {route.name === "generate" ? (
+              <PlanGenerationView
+                onEditProfile={() => navigate({ name: "profile" })}
+                onViewPlan={(planId) => navigate({ name: "plan-detail", planId })}
+              />
+            ) : route.name === "plans" ? (
+              <PlanHistoryView
+                onGenerate={() => navigate({ name: "generate" })}
+                onViewPlan={(planId) => navigate({ name: "plan-detail", planId })}
+              />
+            ) : route.name === "plan-detail" ? (
+              <PlanDetailView
+                key={route.planId}
+                planId={route.planId}
+                onBack={() => navigate({ name: "plans" })}
+              />
+            ) : route.name === "profile" ? (
               <ProfileForm />
-            ) : route === "account" ? (
+            ) : route.name === "account" ? (
               <AccountLinking />
             ) : (
               <section aria-labelledby="not-found-heading">
@@ -70,7 +86,11 @@ export function App() {
                 <p className="mt-2 text-slate-600">
                   The requested page is not part of MyFitnessPlan.
                 </p>
-                <button type="button" className="mt-4" onClick={() => navigate("generate")}>
+                <button
+                  type="button"
+                  className="mt-4"
+                  onClick={() => navigate({ name: "generate" })}
+                >
                   Go to plan generation
                 </button>
               </section>

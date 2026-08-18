@@ -1,23 +1,21 @@
 import type { MouseEvent } from "react";
 
-import { pathForRoute, type AppRoute } from "./useAppRoute";
+import { pathForRoute, type AppRoute, type NavigableRoute } from "./useAppRoute";
 
 interface AppNavigationProps {
   currentRoute: AppRoute;
-  navigate: (route: Exclude<AppRoute, "not-found">) => void;
+  navigate: (route: NavigableRoute) => void;
 }
 
-const LINKS: { label: string; route: Exclude<AppRoute, "not-found"> }[] = [
-  { label: "Generate plan", route: "generate" },
-  { label: "Profile", route: "profile" },
-  { label: "Account settings", route: "account" },
+const LINKS: { label: string; route: NavigableRoute }[] = [
+  { label: "Generate plan", route: { name: "generate" } },
+  { label: "Plan history", route: { name: "plans" } },
+  { label: "Profile", route: { name: "profile" } },
+  { label: "Account settings", route: { name: "account" } },
 ];
 
 export function AppNavigation({ currentRoute, navigate }: AppNavigationProps) {
-  function handleNavigation(
-    event: MouseEvent<HTMLAnchorElement>,
-    route: Exclude<AppRoute, "not-found">,
-  ) {
+  function handleNavigation(event: MouseEvent<HTMLAnchorElement>, route: NavigableRoute) {
     if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
       return;
     }
@@ -28,10 +26,12 @@ export function AppNavigation({ currentRoute, navigate }: AppNavigationProps) {
   return (
     <nav aria-label="Main navigation" className="mb-6 flex flex-wrap gap-2">
       {LINKS.map((link) => {
-        const active = currentRoute === link.route;
+        const active =
+          currentRoute.name === link.route.name ||
+          (currentRoute.name === "plan-detail" && link.route.name === "plans");
         return (
           <a
-            key={link.route}
+            key={link.route.name}
             href={pathForRoute(link.route)}
             aria-current={active ? "page" : undefined}
             className={`rounded-lg border px-4 py-2 text-sm font-medium transition-colors ${
