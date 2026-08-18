@@ -213,8 +213,8 @@ export function ProfileForm() {
             id="session-minutes"
             name="session-minutes"
             type="number"
-            min={1}
-            max={1440}
+            min={10}
+            max={180}
             required
             value={draft.sessionMinutes}
             onChange={(event) => updateDraft("sessionMinutes", event.target.value)}

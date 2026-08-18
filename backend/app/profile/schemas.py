@@ -31,7 +31,7 @@ class ProfileInput(BaseModel):
     fitness_goal: FitnessGoal
     experience_level: ExperienceLevel
     days_per_week: int = Field(ge=1, le=7)
-    session_minutes: int = Field(ge=1, le=1_440)
+    session_minutes: int = Field(ge=10, le=180)
     equipment: list[ProfileListItem] = Field(default_factory=list, max_length=20)
     dietary_preferences: list[ProfileListItem] = Field(default_factory=list, max_length=20)
     wellness_constraints: list[ProfileListItem] = Field(default_factory=list, max_length=20)

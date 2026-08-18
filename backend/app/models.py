@@ -197,7 +197,7 @@ class Profile(TimestampMixin, Base):
             name="ck_profiles_days_per_week",
         ),
         CheckConstraint(
-            "session_minutes BETWEEN 1 AND 1440",
+            "session_minutes BETWEEN 10 AND 180",
             name="ck_profiles_session_minutes",
         ),
         CheckConstraint("jsonb_typeof(equipment) = 'array'", name="ck_profiles_equipment_array"),

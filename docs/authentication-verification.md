@@ -45,10 +45,8 @@ Automated integration tests, rather than a real external account, verify collisi
 failure cases so those tests remain deterministic.
 
 On August 17, 2026, the rebuilt Docker Compose stack was migrated to the current head and all three
-services reached their health checks. Automated browser control was unavailable in the execution
-environment, so the new profile and linking UI has not been claimed as manually verified.
-
-Before marking milestone 6 complete, verify in a local browser:
+services reached their health checks. The repository owner subsequently completed the milestone 6
+browser verification, including:
 
 - Create and edit a profile, then refresh and confirm the saved values reload.
 - Sign in as a different user and confirm the first profile is not visible.
@@ -58,12 +56,14 @@ Before marking milestone 6 complete, verify in a local browser:
 - Confirm logout returns to the authentication form and refresh does not restore the revoked
   session.
 
+Milestone 6 is complete for the documented local portfolio environment.
+
 ## Scope decision
 
-**Required now:** Complete the short browser checklist above before marking milestone 6 complete.
+**Required now:** No remaining milestone 6 work.
 
-**Valuable next:** After manual verification, begin milestone 7 deterministic wellness calculations
-without extending the profile form into plan generation yet.
+**Valuable next:** Implement milestone 7 deterministic wellness calculations without extending the
+profile form into plan generation yet.
 
 **Defer:** An internet-facing deployment would still require TLS and `Secure` cookies, trusted-proxy
 configuration, rate limiting and credential-stuffing defenses, stronger security headers,

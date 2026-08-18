@@ -9,7 +9,7 @@ from alembic.config import Config
 from sqlalchemy import create_engine, inspect, text
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
-MIGRATION_HEAD = "b2f7c91d4e63"
+MIGRATION_HEAD = "8d4f6a2c1b90"
 
 
 @pytest.mark.integration
@@ -75,6 +75,13 @@ def test_upgrade_head_builds_expected_schema_from_empty_database(
             "ck_sessions_expiration",
             "ck_sessions_revocation",
         } <= session_checks
+
+        profile_checks = {
+            constraint["name"]: constraint["sqltext"]
+            for constraint in inspector.get_check_constraints("profiles")
+        }
+        assert "10" in profile_checks["ck_profiles_session_minutes"]
+        assert "180" in profile_checks["ck_profiles_session_minutes"]
     finally:
         engine.dispose()
 

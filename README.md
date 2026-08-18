@@ -88,8 +88,9 @@ Foreign keys delete dependent private data with their owning user. Matching emai
 link accounts by themselves. Explicit linking requires an authenticated session, session-bound
 CSRF validation, and fresh proof of the already connected method. Initial revision
 `7768cfd3a397` creates the milestone 4 schema. Revision `b2f7c91d4e63` adds canonical emails and
-sessions. The complete revision chain is tested against a disposable empty PostgreSQL database,
-including model/schema drift detection.
+sessions. Revision `8d4f6a2c1b90` constrains profile session availability to the 10-180 minute
+general-wellness planning range. The complete revision chain is tested against a disposable empty
+PostgreSQL database, including model/schema drift detection.
 
 ## Docker development environment
 
@@ -199,7 +200,7 @@ The initial migration was manually verified on August 6, 2026 with this sequence
 base -> upgrade head -> inspect -> downgrade base -> inspect -> upgrade head -> alembic check
 ```
 
-The current migration head is `b2f7c91d4e63`, with `users`, `authentication_identities`,
+The current migration head is `8d4f6a2c1b90`, with `users`, `authentication_identities`,
 `sessions`, `profiles`, and `plans` present after upgrade.
 
 ## Host-based local development
@@ -334,6 +335,12 @@ protections are recorded in
 Milestone 6 profile ownership, account-linking boundaries, frontend data flow, and remaining
 hardening are summarized in
 [`docs/milestone-6-architecture.md`](docs/milestone-6-architecture.md).
+The supported deterministic calculations, units, product bounds, safety contract, and intentionally
+unsupported physiological calculations are recorded in
+[`docs/milestone-7-calculation-design.md`](docs/milestone-7-calculation-design.md).
+The backend now calculates weekly available minutes and non-training days from a validated profile
+and rejects explicit medical or rehabilitation requests through a deterministic general-wellness
+scope assessment. These internal services do not generate or persist plans and do not call Claude.
 
 ### Code quality checks
 
