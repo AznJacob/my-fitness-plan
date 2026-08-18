@@ -11,6 +11,7 @@ from app.plan_generation.errors import (
     PlanWorkflowError,
     PlanWorkflowFailureCode,
 )
+from app.plan_generation.preferences import PlanningPreferences
 from app.plan_generation.workflow import generate_plan_result_for_user
 from app.plans.schemas import PlanDetail
 from app.plans.service import persist_generated_plan
@@ -25,7 +26,6 @@ _INVALID_OUTPUT_FAILURES = {
     PlanGenerationFailureCode.UNEXPECTED_RESPONSE,
 }
 _WORKFLOW_STATUS_CODES = {
-    PlanWorkflowFailureCode.MISSING_PROFILE: status.HTTP_404_NOT_FOUND,
     PlanWorkflowFailureCode.UNSAFE_PROFILE: status.HTTP_422_UNPROCESSABLE_CONTENT,
     PlanWorkflowFailureCode.UNSAFE_MODEL_OUTPUT: status.HTTP_502_BAD_GATEWAY,
 }
@@ -38,6 +38,7 @@ _WORKFLOW_STATUS_CODES = {
     status_code=status.HTTP_201_CREATED,
 )
 def generate_plan(
+    payload: PlanningPreferences,
     database_session: DatabaseSession,
     authenticated_session: AuthenticatedCsrfSession,
     settings: ApplicationSettings,
@@ -47,6 +48,7 @@ def generate_plan(
         result = generate_plan_result_for_user(
             database_session,
             authenticated_session.user,
+            payload,
             settings,
         )
         return persist_generated_plan(database_session, authenticated_session.user, result)

@@ -205,6 +205,30 @@ def link_password_identity(
         raise
 
 
+def change_password_identity(
+    database_session: Session,
+    user: User,
+    current_password: str,
+    new_password: str,
+) -> None:
+    """Replace a password only after verifying the user's current password."""
+    password_identity = database_session.scalar(
+        select(AuthenticationIdentity).where(
+            AuthenticationIdentity.user_id == user.id,
+            AuthenticationIdentity.provider == "password",
+        )
+    )
+    verification = verify_password(
+        current_password,
+        password_identity.password_hash if password_identity else None,
+    )
+    if password_identity is None or not verification.valid:
+        raise ReauthenticationFailedError
+
+    password_identity.password_hash = hash_password(new_password)
+    database_session.flush()
+
+
 def register_user(
     database_session: Session,
     email_value: str,
@@ -364,6 +388,7 @@ __all__ = [
     "IssuedSession",
     "RegistrationConflictError",
     "ReauthenticationFailedError",
+    "change_password_identity",
     "get_connected_methods",
     "get_authenticated_session",
     "login_user",

@@ -1,23 +1,19 @@
-import { useEffect, useState } from "react";
+import { useState, type FormEvent } from "react";
 
 import { ApiError } from "../auth/api";
-import { getProfile, type Profile } from "../profile/api";
 import {
   generatePlan,
+  type ExperienceLevel,
   type ExercisePrescription,
+  type FitnessGoal,
   type GeneratedPlan,
   type LegacyExercisePrescription,
   type LegacyGeneratedPlan,
   type LegacyWorkoutSession,
+  type PlanningPreferences,
   type WorkoutSession,
 } from "./api";
 import type { PersistedPlan } from "../plans/api";
-
-type ProfileState =
-  | { status: "loading" }
-  | { status: "missing" }
-  | { status: "error"; message: string }
-  | { status: "ready"; profile: Profile };
 
 type GenerationState =
   | { status: "idle" }
@@ -27,15 +23,24 @@ type GenerationState =
   | { status: "provider-unavailable"; message: string }
   | { status: "error"; message: string };
 
-const LABELS: Record<string, string> = {
-  general_fitness: "General fitness",
-  strength: "Strength",
-  muscle_gain: "Muscle gain",
-  endurance: "Endurance",
-  weight_management: "Weight management",
-  beginner: "Beginner",
-  intermediate: "Intermediate",
-  advanced: "Advanced",
+interface PreferencesDraft {
+  fitnessGoal: FitnessGoal;
+  experienceLevel: ExperienceLevel;
+  daysPerWeek: string;
+  sessionMinutes: string;
+  equipment: string;
+  dietaryPreferences: string;
+  wellnessConstraints: string;
+}
+
+const INITIAL_PREFERENCES: PreferencesDraft = {
+  fitnessGoal: "general_fitness",
+  experienceLevel: "beginner",
+  daysPerWeek: "3",
+  sessionMinutes: "45",
+  equipment: "",
+  dietaryPreferences: "",
+  wellnessConstraints: "",
 };
 
 function messageFromError(error: unknown): string {
@@ -51,25 +56,23 @@ function SummaryItem({ label, value }: { label: string; value: string }) {
   );
 }
 
-function ProfileSummary({ profile }: { profile: Profile }) {
-  const listValue = (values: string[]) =>
-    values.length === 0 ? "None specified" : values.join(", ");
+function listFromLines(value: string): string[] {
+  return value
+    .split("\n")
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+}
 
-  return (
-    <div className="mt-5">
-      <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <SummaryItem label="Goal" value={LABELS[profile.fitness_goal]} />
-        <SummaryItem label="Experience" value={LABELS[profile.experience_level]} />
-        <SummaryItem
-          label="Schedule"
-          value={`${profile.days_per_week} days × ${profile.session_minutes} minutes`}
-        />
-        <SummaryItem label="Equipment" value={listValue(profile.equipment)} />
-        <SummaryItem label="Diet" value={listValue(profile.dietary_preferences)} />
-        <SummaryItem label="Constraints" value={listValue(profile.wellness_constraints)} />
-      </dl>
-    </div>
-  );
+function preferencesFromDraft(draft: PreferencesDraft): PlanningPreferences {
+  return {
+    fitness_goal: draft.fitnessGoal,
+    experience_level: draft.experienceLevel,
+    days_per_week: Number(draft.daysPerWeek),
+    session_minutes: Number(draft.sessionMinutes),
+    equipment: listFromLines(draft.equipment),
+    dietary_preferences: listFromLines(draft.dietaryPreferences),
+    wellness_constraints: listFromLines(draft.wellnessConstraints),
+  };
 }
 
 function LegacyExerciseList({ exercises }: { exercises: LegacyExercisePrescription[] }) {
@@ -264,45 +267,24 @@ export function GeneratedPlanDisplay({ plan }: { plan: GeneratedPlan }) {
   );
 }
 
-export function PlanGenerationView({
-  onEditProfile,
-  onViewPlan,
-}: {
-  onEditProfile: () => void;
-  onViewPlan: (planId: string) => void;
-}) {
-  const [profileState, setProfileState] = useState<ProfileState>({ status: "loading" });
+export function PlanGenerationView({ onViewPlan }: { onViewPlan: (planId: string) => void }) {
+  const [draft, setDraft] = useState<PreferencesDraft>(INITIAL_PREFERENCES);
   const [generationState, setGenerationState] = useState<GenerationState>({ status: "idle" });
 
-  useEffect(() => {
-    let active = true;
-    void getProfile()
-      .then((profile) => {
-        if (active) {
-          setProfileState(profile === null ? { status: "missing" } : { status: "ready", profile });
-        }
-      })
-      .catch((error: unknown) => {
-        if (active) {
-          setProfileState({ status: "error", message: messageFromError(error) });
-        }
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
+  function updateDraft<Key extends keyof PreferencesDraft>(key: Key, value: PreferencesDraft[Key]) {
+    setDraft((current) => ({ ...current, [key]: value }));
+  }
 
-  async function handleGenerate() {
+  async function handleGenerate(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
     setGenerationState({ status: "loading" });
     try {
-      setGenerationState({ status: "success", plan: await generatePlan() });
+      setGenerationState({
+        status: "success",
+        plan: await generatePlan(preferencesFromDraft(draft)),
+      });
     } catch (error) {
       if (error instanceof ApiError) {
-        if (error.code === "missing_profile") {
-          setProfileState({ status: "missing" });
-          setGenerationState({ status: "idle" });
-          return;
-        }
         if (
           error.code === "unsafe_profile" ||
           error.code === "invalid_model_output" ||
@@ -322,62 +304,156 @@ export function PlanGenerationView({
 
   return (
     <div className="space-y-6">
-      <section aria-labelledby="plan-generation-heading">
-        <h2 id="plan-generation-heading">Generate your plan</h2>
-        <p className="mt-2 text-sm text-slate-600">
-          Review the saved profile Claude will use. Generation uses a concise format with a
-          35-second provider timeout.
+      <section aria-labelledby="plan-generation-heading" className="page-hero">
+        <p className="page-eyebrow">Plan builder</p>
+        <h1
+          id="plan-generation-heading"
+          className="mt-3 text-3xl font-black tracking-tight sm:text-4xl"
+        >
+          Build a plan that fits your week.
+        </h1>
+        <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
+          Choose the goals, schedule, and preferences for this plan. These choices are used for this
+          generation only and are not saved to your account.
         </p>
-
-        {profileState.status === "loading" ? (
-          <p className="mt-5 text-slate-600" role="status">
-            Loading your saved profile…
-          </p>
-        ) : profileState.status === "missing" ? (
-          <div className="mt-5 rounded-lg bg-amber-50 p-4 text-amber-900" role="status">
-            <p className="font-medium">Create a profile before generating a plan.</p>
-            <button type="button" className="mt-3" onClick={onEditProfile}>
-              Create profile
-            </button>
-          </div>
-        ) : profileState.status === "error" ? (
-          <p className="mt-5 rounded-lg bg-red-50 p-4 text-sm text-red-700" role="alert">
-            {profileState.message}
-          </p>
-        ) : (
-          <>
-            <ProfileSummary profile={profileState.profile} />
-            <div className="mt-5 flex flex-wrap gap-3">
-              <button
-                type="button"
-                disabled={generationState.status === "loading"}
-                onClick={() => void handleGenerate()}
-              >
-                {generationState.status === "loading" ? "Generating…" : "Generate plan"}
-              </button>
-              <button
-                type="button"
-                className="border border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
-                disabled={generationState.status === "loading"}
-                onClick={onEditProfile}
-              >
-                Edit profile
-              </button>
+        <div className="mt-7 grid max-w-xl grid-cols-3 gap-3 text-left">
+          {[
+            ["01", "Your goal"],
+            ["02", "Your schedule"],
+            ["03", "Your preferences"],
+          ].map(([number, label]) => (
+            <div key={number} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <span className="block text-xs font-bold text-indigo-600">{number}</span>
+              <span className="mt-1 block text-xs font-medium text-slate-600 sm:text-sm">
+                {label}
+              </span>
             </div>
-          </>
-        )}
+          ))}
+        </div>
+      </section>
+
+      <section aria-labelledby="preferences-heading">
+        <div className="max-w-2xl">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-indigo-600">
+            Plan preferences
+          </p>
+          <h2 id="preferences-heading" className="mt-2">
+            Tell us what works for you
+          </h2>
+          <p className="mt-2 text-sm leading-6 text-slate-600">
+            There are no perfect answers. Choose what feels realistic for the week ahead.
+          </p>
+        </div>
+
+        <form
+          className="mt-7 grid gap-4 sm:grid-cols-2"
+          onSubmit={(event) => void handleGenerate(event)}
+        >
+          <p className="mb-0 rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200/70">
+            <label htmlFor="fitness-goal">Primary fitness goal</label>
+            <select
+              id="fitness-goal"
+              name="fitness-goal"
+              value={draft.fitnessGoal}
+              onChange={(event) => updateDraft("fitnessGoal", event.target.value as FitnessGoal)}
+            >
+              <option value="general_fitness">General fitness</option>
+              <option value="strength">Strength</option>
+              <option value="muscle_gain">Muscle gain</option>
+              <option value="endurance">Endurance</option>
+              <option value="weight_management">Weight management</option>
+            </select>
+          </p>
+          <p className="mb-0 rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200/70">
+            <label htmlFor="experience-level">Experience level</label>
+            <select
+              id="experience-level"
+              name="experience-level"
+              value={draft.experienceLevel}
+              onChange={(event) =>
+                updateDraft("experienceLevel", event.target.value as ExperienceLevel)
+              }
+            >
+              <option value="beginner">Beginner</option>
+              <option value="intermediate">Intermediate</option>
+              <option value="advanced">Advanced</option>
+            </select>
+          </p>
+          <p className="mb-0 rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200/70">
+            <label htmlFor="days-per-week">Available days per week</label>
+            <input
+              id="days-per-week"
+              name="days-per-week"
+              type="number"
+              min={1}
+              max={7}
+              required
+              value={draft.daysPerWeek}
+              onChange={(event) => updateDraft("daysPerWeek", event.target.value)}
+            />
+          </p>
+          <p className="mb-0 rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200/70">
+            <label htmlFor="session-minutes">Minutes available per session</label>
+            <input
+              id="session-minutes"
+              name="session-minutes"
+              type="number"
+              min={10}
+              max={180}
+              required
+              value={draft.sessionMinutes}
+              onChange={(event) => updateDraft("sessionMinutes", event.target.value)}
+            />
+          </p>
+          <p className="mb-0 rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200/70">
+            <label htmlFor="equipment">Available equipment (one item per line)</label>
+            <textarea
+              id="equipment"
+              name="equipment"
+              rows={4}
+              value={draft.equipment}
+              onChange={(event) => updateDraft("equipment", event.target.value)}
+            />
+          </p>
+          <p className="mb-0 rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200/70">
+            <label htmlFor="dietary-preferences">Dietary preferences (one item per line)</label>
+            <textarea
+              id="dietary-preferences"
+              name="dietary-preferences"
+              rows={4}
+              value={draft.dietaryPreferences}
+              onChange={(event) => updateDraft("dietaryPreferences", event.target.value)}
+            />
+          </p>
+          <p className="mb-0 rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200/70 sm:col-span-2">
+            <label htmlFor="wellness-constraints">
+              Relevant general wellness constraints (one item per line)
+            </label>
+            <textarea
+              id="wellness-constraints"
+              name="wellness-constraints"
+              rows={3}
+              value={draft.wellnessConstraints}
+              onChange={(event) => updateDraft("wellnessConstraints", event.target.value)}
+            />
+          </p>
+          <button
+            type="submit"
+            className="mt-2 w-full py-3.5 text-base sm:col-span-2"
+            disabled={generationState.status === "loading"}
+          >
+            {generationState.status === "loading" ? "Generating…" : "Generate plan"}
+          </button>
+        </form>
 
         {generationState.status === "loading" ? (
           <p className="mt-5 rounded-lg bg-blue-50 p-4 text-sm text-blue-800" role="status">
-            Claude is creating and validating your plan…
+            Creating and validating your personalized plan…
           </p>
         ) : generationState.status === "validation-error" ? (
-          <div className="mt-5 rounded-lg bg-amber-50 p-4 text-sm text-amber-900" role="alert">
-            <p>{generationState.message}</p>
-            <button type="button" className="mt-3" onClick={onEditProfile}>
-              Review profile
-            </button>
-          </div>
+          <p className="mt-5 rounded-lg bg-amber-50 p-4 text-sm text-amber-900" role="alert">
+            {generationState.message} Review the planning preferences above and try again.
+          </p>
         ) : generationState.status === "provider-unavailable" ? (
           <p className="mt-5 rounded-lg bg-amber-50 p-4 text-sm text-amber-900" role="alert">
             {generationState.message} Please try again later.
@@ -399,7 +475,7 @@ export function PlanGenerationView({
         <>
           <section
             aria-labelledby="saved-plan-heading"
-            className="border-emerald-200 bg-emerald-50"
+            className="border-emerald-200 bg-gradient-to-r from-emerald-50 to-lime-50"
           >
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>

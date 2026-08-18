@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlalchemy.exc import SQLAlchemyError
 
+from app.account.router import router as account_router
 from app.auth.router import router as authentication_router
 from app.config import LOCAL_FRONTEND_ORIGINS, load_settings
 from app.database import (
@@ -17,7 +18,6 @@ from app.database import (
 from app.middleware import NoStoreMiddleware
 from app.plan_generation.router import router as plan_generation_router
 from app.plans.router import router as plans_router
-from app.profile.router import router as profile_router
 from app.protected import router as protected_router
 
 logger = logging.getLogger(__name__)
@@ -60,7 +60,7 @@ app.add_middleware(
     allow_headers=["Content-Type", "X-CSRF-Token"],
 )
 app.include_router(authentication_router)
-app.include_router(profile_router)
+app.include_router(account_router)
 app.include_router(plan_generation_router)
 app.include_router(plans_router)
 app.include_router(protected_router)

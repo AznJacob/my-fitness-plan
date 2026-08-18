@@ -9,7 +9,7 @@ from alembic.config import Config
 from sqlalchemy import create_engine, inspect, text
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
-MIGRATION_HEAD = "c7e91a4b2d65"
+MIGRATION_HEAD = "d91b6e4f2a70"
 
 
 @pytest.mark.integration
@@ -29,9 +29,9 @@ def test_upgrade_head_builds_expected_schema_from_empty_database(
         inspector = inspect(engine)
         assert set(inspector.get_table_names()) == {
             "alembic_version",
+            "account_details",
             "authentication_identities",
             "plans",
-            "profiles",
             "sessions",
             "users",
         }
@@ -41,7 +41,7 @@ def test_upgrade_head_builds_expected_schema_from_empty_database(
                 text("SELECT version_num FROM alembic_version")
             ).scalar_one() == (MIGRATION_HEAD)
 
-        for table_name in ("authentication_identities", "plans", "profiles", "sessions"):
+        for table_name in ("authentication_identities", "account_details", "plans", "sessions"):
             foreign_keys = inspector.get_foreign_keys(table_name)
             assert len(foreign_keys) == 1
             assert foreign_keys[0]["referred_table"] == "users"
@@ -78,12 +78,12 @@ def test_upgrade_head_builds_expected_schema_from_empty_database(
             "ck_sessions_revocation",
         } <= session_checks
 
-        profile_checks = {
+        account_checks = {
             constraint["name"]: constraint["sqltext"]
-            for constraint in inspector.get_check_constraints("profiles")
+            for constraint in inspector.get_check_constraints("account_details")
         }
-        assert "10" in profile_checks["ck_profiles_session_minutes"]
-        assert "180" in profile_checks["ck_profiles_session_minutes"]
+        assert "50" in account_checks["ck_account_details_height_cm"]
+        assert "400" in account_checks["ck_account_details_weight_kg"]
     finally:
         engine.dispose()
 

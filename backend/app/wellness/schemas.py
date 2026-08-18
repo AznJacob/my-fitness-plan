@@ -28,7 +28,7 @@ class WellnessCalculationInput(BaseModel):
 
 
 class WellnessCalculationResult(BaseModel):
-    """Versioned schedule facts derived deterministically from a saved profile."""
+    """Versioned schedule facts derived deterministically from request preferences."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -61,7 +61,7 @@ class WellnessSafetyIssueCode(StrEnum):
 
 
 class WellnessSafetyInput(BaseModel):
-    """Bounded profile values used only to assess the generation scope."""
+    """Bounded preference values used only to assess the generation scope."""
 
     model_config = ConfigDict(extra="forbid")
 

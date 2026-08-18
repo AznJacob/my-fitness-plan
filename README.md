@@ -285,23 +285,22 @@ The local API exposes:
 - `POST /auth/link/google` to link Google after fresh password and Google verification.
 - `POST /auth/link/password` to link a password after fresh verification of the owned Google
   subject.
+- `POST /auth/password` to change an existing password after verifying the current password.
 - `GET /protected` as the minimal example of a route available to any authenticated user.
-- `GET /profile` to retrieve the signed-in user's saved planning preferences.
-- `PUT /profile` to create or replace those preferences with session-bound CSRF protection.
-- `POST /plans/generate` to generate a schema-validated plan from the signed-in user's saved
-  profile after deterministic calculation and input/output safety checks, then persist it as
-  inactive with its generation snapshot.
+- `GET /account/details` and `PUT /account/details` to read or replace the signed-in user's private
+  username, height, and weight.
+- `POST /plans/generate` to validate per-request planning preferences, generate a schema-validated
+  plan after deterministic calculation and input/output safety checks, and persist it as inactive
+  with its immutable generation snapshot.
 - `GET /plans` to list the signed-in user's plan history.
 - `GET /plans/{plan_id}` to retrieve one complete owned plan and its profile/calculation snapshot.
 - `POST /plans/{plan_id}/activate` to transactionally select one non-archived active plan.
 - `POST /plans/{plan_id}/archive` to archive an owned plan permanently.
 
-Profile ownership is derived only from the authenticated application session. Profile requests do
-not accept a user ID, so a client cannot select or update another user's row. A missing profile
-returns `404`; users create their initial profile with the same `PUT` used for later replacements.
-The authenticated React view loads this profile on entry, renders a basic create or edit form, and
-saves through the shared credentialed API client with session-bound CSRF protection. List fields use
-one item per line. This flow captures preferences only; it does not generate a plan.
+Account-details ownership is derived only from the authenticated application session. Requests do
+not accept a user ID, so a client cannot select or update another user's row. Planning preferences
+are deliberately not stored as reusable account state: the generation screen sends them with each
+protected request, and the exact validated inputs are retained only in the resulting plan snapshot.
 
 State-changing authentication requests must come from `http://localhost:5173` or
 `http://127.0.0.1:5173`, include cookies, and copy the `mfp_csrf` cookie into the
@@ -351,13 +350,14 @@ connected methods and lets the user add the missing method through that explicit
 The automated security coverage, manual checks, scope decisions, and deferred deployment
 protections are recorded in
 [`docs/authentication-verification.md`](docs/authentication-verification.md).
-Milestone 6 profile ownership, account-linking boundaries, frontend data flow, and remaining
+Milestone 6 account ownership, account-linking boundaries, frontend data flow, and remaining
 hardening are summarized in
 [`docs/milestone-6-architecture.md`](docs/milestone-6-architecture.md).
 The supported deterministic calculations, units, product bounds, safety contract, and intentionally
 unsupported physiological calculations are recorded in
 [`docs/milestone-7-calculation-design.md`](docs/milestone-7-calculation-design.md).
-The backend now calculates weekly available minutes and non-training days from a validated profile
+The backend now calculates weekly available minutes and non-training days from validated planning
+preferences
 and rejects explicit medical or rehabilitation requests through a deterministic general-wellness
 scope assessment. These internal services do not generate or persist plans and do not call Claude.
 Stage 8.1 Claude configuration, bounded client behavior, strict workout and nutrition schemas, and
@@ -367,7 +367,7 @@ request is made by Stage 8.1.
 The backend structured-generation service now makes one bounded provider attempt, keeps system and
 data prompt sections separate, and rejects provider failures, malformed JSON, truncated output, and
 schema violations without repair or automatic retry. Stage 9.1 exposes that service through a
-session- and CSRF-protected endpoint that accepts no user ID, rejects unsafe profiles before the
+session- and CSRF-protected endpoint that accepts no user ID, rejects unsafe preferences before the
 provider call, and checks schema-valid output against deterministic schedule and general-wellness
 boundaries before returning it. Stage 10.1 now persists that validated result. The generation
 architecture and explicitly deferred research/citation work are recorded in
@@ -376,22 +376,23 @@ No paid Claude request is made by automated verification.
 
 Authenticated frontend workflows now use simple browser-history routes:
 
-- `/plans/new` reviews the saved profile, starts protected generation, presents explicit loading
+- `/` introduces MyFitnessPlan and provides the primary action to start a new plan.
+- `/plans/new` collects per-plan preferences, starts protected generation, presents explicit loading
   and failure states, renders the validated workout and nutrition result with a wellness
   disclaimer, and links to the saved plan.
 - `/plans` restores the persisted plan history after refresh and clearly identifies the active
   plan.
 - `/plans/{plan_id}` restores a complete saved plan and its generation snapshot, and provides the
   permitted active-selection and archive actions.
-- `/profile` creates or edits the saved planning profile.
-- `/account` manages connected password and Google sign-in methods.
+- `/account` manages username, height, weight, password, and connected sign-in methods from the
+  top-right navigation entry.
 
 Lifecycle mutations reuse the session-bound CSRF client. Archived plans remain readable but cannot
 be selected as active again. The interface reflects these backend rules and does not accept or send
 a user ID for ownership.
 
-Milestones 9 and 10 are complete. The protected workflow derives profile ownership from the
-authenticated session, runs deterministic safety assessment and calculations before Claude,
+Milestones 9 and 10 are complete. The protected workflow derives user ownership from the
+authenticated session, validates request-specific preferences before Claude,
 validates structured provider output, applies a second generated-content safety gate, and presents
 the resulting plan in React. Automated checks mock Claude and do not consume API credits. Research
 retrieval, pgvector, and citations are not implemented, and the application is not production-ready.

@@ -75,7 +75,7 @@ intentionally leaves the user with no active plan.
 ## Stage 10.3 final verification
 
 The complete workflow is verified against an isolated migrated PostgreSQL database with Claude
-replaced by a deterministic mock. This exercises profile ownership, safety calculations, validated
+replaced by a deterministic mock. This exercises user ownership, safety calculations, validated
 generation, persistence, history and detail restoration, active-plan replacement, terminal
 archiving, and immutable profile snapshots without consuming API credits. It also verifies that a
 second authenticated user receives the same not-found result for another user's plan as for an

@@ -12,10 +12,10 @@ from anthropic.types import Message
 from app.claude.client import ClaudeClient, ClaudeConfigurationError
 from app.config import Settings
 from app.plan_generation.errors import PlanGenerationError, PlanGenerationFailureCode
+from app.plan_generation.preferences import PlanningPreferences as ProfileInput
 from app.plan_generation.schemas import ClaudePlanRequest
 from app.plan_generation.service import generate_structured_plan
-from app.profile.schemas import ProfileInput
-from app.wellness.service import calculate_profile_wellness
+from app.wellness.service import calculate_preferences_wellness as calculate_profile_wellness
 
 DATABASE_URL = "postgresql+psycopg://app_user:secret@postgres:5432/myfitnessplan"
 

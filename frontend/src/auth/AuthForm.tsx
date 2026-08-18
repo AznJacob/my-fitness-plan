@@ -5,9 +5,9 @@ import { GoogleSignInButton } from "./GoogleSignInButton";
 
 type AuthMode = "login" | "register";
 
-export function AuthForm() {
+export function AuthForm({ initialMode = "login" }: { initialMode?: AuthMode }) {
   const { error, login, register } = useAuth();
-  const [mode, setMode] = useState<AuthMode>("login");
+  const [mode, setMode] = useState<AuthMode>(initialMode);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -38,8 +38,18 @@ export function AuthForm() {
   }
 
   return (
-    <section aria-labelledby="auth-heading" className="max-w-lg">
-      <h2 id="auth-heading">{isRegistration ? "Create an account" : "Log in"}</h2>
+    <section aria-labelledby="auth-heading" className="w-full max-w-lg p-7 sm:p-9">
+      <p className="text-xs font-bold uppercase tracking-[0.18em] text-indigo-600">
+        {isRegistration ? "Get started" : "Welcome back"}
+      </p>
+      <h2 id="auth-heading" className="mt-2 text-3xl font-black tracking-tight">
+        {isRegistration ? "Create your account" : "Log in to continue"}
+      </h2>
+      <p className="mt-2 text-sm leading-6 text-slate-600">
+        {isRegistration
+          ? "Create an account to generate and save your personalized plans."
+          : "Access plan generation, saved plans, and your account settings."}
+      </p>
       <form className="mt-5" onSubmit={(event) => void handleSubmit(event)}>
         <p>
           <label htmlFor="email">Email</label>
@@ -74,19 +84,19 @@ export function AuthForm() {
             {error}
           </p>
         )}
-        <button type="submit" disabled={submitting}>
-          {submitting ? "Please wait…" : isRegistration ? "Register" : "Log in"}
+        <button className="w-full" type="submit" disabled={submitting}>
+          {submitting ? "Please wait…" : isRegistration ? "Create account" : "Log in"}
         </button>
       </form>
       <p className="mt-4 text-sm text-slate-600">
         {isRegistration ? "Already have an account?" : "Need an account?"}{" "}
         <button
           type="button"
-          className="bg-transparent px-1 text-blue-700 hover:bg-transparent hover:underline"
+          className="bg-transparent px-1 text-indigo-700 shadow-none hover:translate-y-0 hover:bg-transparent hover:underline"
           onClick={switchMode}
           disabled={submitting}
         >
-          {isRegistration ? "Log in" : "Register"}
+          {isRegistration ? "Log in" : "Create one"}
         </button>
       </p>
       <GoogleSignInButton />

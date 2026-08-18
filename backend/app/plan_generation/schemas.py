@@ -4,7 +4,7 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
-from app.profile.schemas import ProfileInput
+from app.plan_generation.preferences import PlanningPreferences
 from app.wellness.schemas import WellnessCalculationResult
 
 ShortText = Annotated[
@@ -138,4 +138,4 @@ class ClaudePlanRequest(BaseModel):
     system_instructions: PromptSection
     application_context: PromptSection
     calculated_values: WellnessCalculationResult
-    profile_data: ProfileInput
+    profile_data: PlanningPreferences

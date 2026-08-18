@@ -355,3 +355,51 @@ def test_connected_methods_requires_authentication(linking_client: TestClient) -
 
     assert response.status_code == 401
     assert response.json() == {"detail": "Authentication required."}
+
+
+def test_password_user_can_change_password_after_reauthentication(
+    linking_client: TestClient,
+) -> None:
+    assert register(linking_client, "person@example.com").status_code == 201
+
+    response = linking_client.post(
+        "/auth/password",
+        json={"current_password": PASSWORD, "new_password": NEW_PASSWORD},
+        headers=csrf_headers(linking_client),
+    )
+
+    assert response.status_code == 204
+    logout_response = linking_client.post("/auth/logout", headers=csrf_headers(linking_client))
+    assert logout_response.status_code == 204
+    ensure_csrf_cookie(linking_client)
+    assert (
+        linking_client.post(
+            "/auth/login",
+            json={"email": "person@example.com", "password": PASSWORD},
+            headers=csrf_headers(linking_client),
+        ).status_code
+        == 401
+    )
+    assert (
+        linking_client.post(
+            "/auth/login",
+            json={"email": "person@example.com", "password": NEW_PASSWORD},
+            headers=csrf_headers(linking_client),
+        ).status_code
+        == 200
+    )
+
+
+def test_password_change_rejects_incorrect_current_password(
+    linking_client: TestClient,
+) -> None:
+    assert register(linking_client, "person@example.com").status_code == 201
+
+    response = linking_client.post(
+        "/auth/password",
+        json={"current_password": "incorrect password", "new_password": NEW_PASSWORD},
+        headers=csrf_headers(linking_client),
+    )
+
+    assert response.status_code == 401
+    assert response.json() == {"detail": "Current password is incorrect."}

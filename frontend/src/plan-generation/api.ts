@@ -92,7 +92,22 @@ export interface CompactGeneratedPlan {
 
 export type GeneratedPlan = LegacyGeneratedPlan | CompactGeneratedPlan;
 
-export async function generatePlan(): Promise<PersistedPlan> {
-  const response = await csrfProtectedMutation("/plans/generate", "POST");
+export type FitnessGoal =
+  "general_fitness" | "strength" | "muscle_gain" | "endurance" | "weight_management";
+
+export type ExperienceLevel = "beginner" | "intermediate" | "advanced";
+
+export interface PlanningPreferences {
+  fitness_goal: FitnessGoal;
+  experience_level: ExperienceLevel;
+  days_per_week: number;
+  session_minutes: number;
+  equipment: string[];
+  dietary_preferences: string[];
+  wellness_constraints: string[];
+}
+
+export async function generatePlan(preferences: PlanningPreferences): Promise<PersistedPlan> {
+  const response = await csrfProtectedMutation("/plans/generate", "POST", preferences);
   return (await response.json()) as PersistedPlan;
 }

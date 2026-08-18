@@ -2,16 +2,14 @@
 
 ## Stage 9.1 backend workflow
 
-`POST /plans/generate` is a state-changing, protected operation. It accepts no request body and no
-user identifier. The backend resolves the application user from the opaque HttpOnly session and
-requires the existing origin-bound, session-bound CSRF proof before any profile lookup or Claude
-request can occur.
+`POST /plans/generate` is a state-changing, protected operation. It accepts validated planning
+preferences but no user identifier. The backend resolves the application user from the opaque
+HttpOnly session and requires the existing origin-bound, session-bound CSRF proof.
 
 The application workflow performs these steps in order:
 
-1. Load the profile owned by the authenticated user. A missing profile returns a machine-readable
-   `404 missing_profile` response.
-2. Revalidate the stored row as a `ProfileInput` and run the deterministic general-wellness scope
+1. Validate the request body as bounded `PlanningPreferences`.
+2. Run the deterministic general-wellness scope
    assessment. Out-of-scope medical or rehabilitation requests return `422 unsafe_profile` and do
    not reach Claude.
 3. Calculate the exact schedule facts in Python: sessions per week, minutes per session, weekly
@@ -50,16 +48,15 @@ general-wellness application and is not production-ready.
 ## Stage 9.2 React generation experience
 
 Authenticated users now have separate browser-history routes for plan generation (`/plans/new`),
-profile editing (`/profile`), and account settings (`/account`). The small route matcher uses the
+plan history, plan details, and account settings (`/account`). The small route matcher uses the
 native History API because these three static views do not yet justify another frontend dependency.
 Normal links still contain real paths, modified clicks continue to behave like browser links, and
 back/forward navigation updates the rendered view. Milestone 10 can extend the matcher for plan
 history and plan-detail identifiers.
 
-The generation view reloads the authenticated user's saved profile from the backend and shows the
-goal, experience, schedule, equipment, dietary preferences, and constraints before enabling the
-paid action. Generation uses the shared credentialed client, which copies the readable CSRF cookie
-into the request header without reading the HttpOnly session cookie.
+The generation view collects goal, experience, schedule, equipment, dietary preferences, and
+constraints for each request. Generation uses the shared credentialed client, which copies the
+readable CSRF cookie into the request header without reading the HttpOnly session cookie.
 
 The interface distinguishes initial profile loading, missing profile, generation in progress,
 profile scope rejection, provider unavailability, other generation failures, and success. A

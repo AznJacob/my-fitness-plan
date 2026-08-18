@@ -1,24 +1,22 @@
 # Milestone 6 architecture
 
-Milestone 6 adds profile persistence and explicit identity linking to the application-controlled
-user established in milestone 5. It does not generate workout or nutrition plans.
+Milestone 6 originally added planning-profile persistence and explicit identity linking. The
+current application retains the identity-linking boundary while later product work replaced the
+saved planning profile with private account details and per-request plan preferences.
 
-## Profile ownership and validation
+## Current account-details ownership and validation
 
-`GET /profile` and `PUT /profile` never accept a user ID. FastAPI resolves the HttpOnly session,
-loads its application user, and derives the profile primary key from that user. This keeps ownership
-outside client control. `PUT` creates the one-to-one profile when absent and replaces its current
-values when present.
+`GET /account/details` and `PUT /account/details` never accept a user ID. FastAPI resolves the
+HttpOnly session and derives the account-details primary key from its application user. `PUT`
+creates the one-to-one row when absent and replaces username, height, and weight when present.
 
-Pydantic constrains goals, experience levels, availability, list sizes, item lengths, and duplicate
-list values before persistence. PostgreSQL repeats the important enum, numeric, and JSON-shape
-constraints so invalid rows cannot bypass the API boundary. Profile text remains general-wellness
-input and is not treated as medical information or a request for treatment.
+Pydantic and PostgreSQL both constrain username length and plausible height and weight ranges.
+Planning goals, availability, equipment, dietary preferences, and wellness constraints are no
+longer persisted in this row; they are validated with each generation request.
 
-The authenticated React view calls `GET /profile` on mount. A `404` selects creation defaults; an
-existing response populates the edit form. Both creation and editing use the same `PUT /profile`
-request. The shared API client includes the HttpOnly session automatically and echoes only the
-JavaScript-readable CSRF cookie in `X-CSRF-Token`.
+The account screen calls `GET /account/details` on mount. A `404` selects empty defaults; an existing
+response populates the form. The shared API client includes the HttpOnly session automatically and
+echoes only the JavaScript-readable CSRF cookie in `X-CSRF-Token`.
 
 ## Explicit identity linking
 

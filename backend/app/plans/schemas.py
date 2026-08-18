@@ -7,8 +7,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.plan_generation.preferences import FitnessGoal, PlanningPreferences
 from app.plan_generation.schemas import GeneratedPlan, LegacyGeneratedPlan
-from app.profile.schemas import ProfileInput
 from app.wellness.schemas import WellnessCalculationResult
 
 
@@ -23,7 +23,7 @@ class PlanProfileSnapshot(BaseModel):
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    profile: ProfileInput
+    profile: PlanningPreferences
     calculated_values: WellnessCalculationResult
 
 
@@ -32,6 +32,7 @@ class PlanSummary(BaseModel):
 
     id: UUID
     title: str
+    fitness_goal: FitnessGoal
     status: PlanStatus
     created_at: datetime
     updated_at: datetime

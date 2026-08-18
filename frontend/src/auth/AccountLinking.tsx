@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 
 import {
+  changePassword,
   getConnectedMethods,
   linkGoogle,
   linkPassword,
@@ -14,8 +15,8 @@ function messageFromError(error: unknown): string {
 
 function MethodStatus({ connected, label }: { connected: boolean; label: string }) {
   return (
-    <li className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-4 py-3">
-      <span className="font-medium">{label}</span>
+    <li className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+      <span className="font-semibold text-slate-800">{label}</span>
       <span
         className={`rounded-full px-3 py-1 text-xs font-semibold ${
           connected ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
@@ -32,6 +33,10 @@ export function AccountLinking() {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [changeCurrentPassword, setChangeCurrentPassword] = useState("");
+  const [changedPassword, setChangedPassword] = useState("");
+  const [changedPasswordConfirmation, setChangedPasswordConfirmation] = useState("");
+  const [changingPassword, setChangingPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -104,10 +109,35 @@ export function AccountLinking() {
     [confirmPassword, newPassword],
   );
 
+  async function handlePasswordChange(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError(null);
+    setSuccessMessage(null);
+    if (changedPassword !== changedPasswordConfirmation) {
+      setError("The new passwords do not match.");
+      return;
+    }
+    setChangingPassword(true);
+    try {
+      await changePassword(changeCurrentPassword, changedPassword);
+      setChangeCurrentPassword("");
+      setChangedPassword("");
+      setChangedPasswordConfirmation("");
+      setSuccessMessage("Your password has been changed.");
+    } catch (requestError) {
+      setError(messageFromError(requestError));
+    } finally {
+      setChangingPassword(false);
+    }
+  }
+
   return (
     <section aria-labelledby="sign-in-methods-heading">
-      <h2 id="sign-in-methods-heading">Sign-in methods</h2>
-      <p className="mt-1 text-sm text-slate-600">
+      <p className="text-xs font-bold uppercase tracking-[0.18em] text-indigo-600">Security</p>
+      <h2 id="sign-in-methods-heading" className="mt-2">
+        Password and sign-in methods
+      </h2>
+      <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
         Connect both methods if you want to sign in with either Google or a MyFitnessPlan password.
       </p>
       {methods === null ? (
@@ -121,8 +151,63 @@ export function AccountLinking() {
             <MethodStatus connected={methods.google} label="Google" />
           </ul>
 
+          {methods.password ? (
+            <form
+              className="mt-6 rounded-2xl border border-slate-200 bg-slate-50/70 p-5 sm:p-6"
+              onSubmit={(event) => void handlePasswordChange(event)}
+            >
+              <h3>Change password</h3>
+              <p className="mt-1 text-sm text-slate-600">
+                Confirm your current password before choosing a new one.
+              </p>
+              <div className="mt-4 grid max-w-xl gap-4">
+                <div>
+                  <label htmlFor="change-current-password">Current password</label>
+                  <input
+                    id="change-current-password"
+                    type="password"
+                    autoComplete="current-password"
+                    maxLength={128}
+                    required
+                    value={changeCurrentPassword}
+                    onChange={(event) => setChangeCurrentPassword(event.target.value)}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="changed-password">New password</label>
+                  <input
+                    id="changed-password"
+                    type="password"
+                    autoComplete="new-password"
+                    minLength={8}
+                    maxLength={128}
+                    required
+                    value={changedPassword}
+                    onChange={(event) => setChangedPassword(event.target.value)}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="changed-password-confirmation">Confirm new password</label>
+                  <input
+                    id="changed-password-confirmation"
+                    type="password"
+                    autoComplete="new-password"
+                    minLength={8}
+                    maxLength={128}
+                    required
+                    value={changedPasswordConfirmation}
+                    onChange={(event) => setChangedPasswordConfirmation(event.target.value)}
+                  />
+                </div>
+              </div>
+              <button className="mt-4" type="submit" disabled={changingPassword}>
+                {changingPassword ? "Changing…" : "Change password"}
+              </button>
+            </form>
+          ) : null}
+
           {!methods.google && methods.password ? (
-            <div className="mt-6 border-t border-slate-200 pt-6">
+            <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50/70 p-5 sm:p-6">
               <h3>Connect Google</h3>
               <p className="mt-1 text-sm text-slate-600">
                 Step 1: Re-enter your current MyFitnessPlan password.
@@ -139,8 +224,8 @@ export function AccountLinking() {
                   onChange={(event) => setCurrentPassword(event.target.value)}
                 />
               </div>
-              <div className="mt-5 rounded-lg border border-blue-200 bg-blue-50 p-4">
-                <p className="text-sm font-medium text-blue-900">
+              <div className="mt-5 rounded-xl border border-indigo-200 bg-indigo-50 p-4">
+                <p className="text-sm font-medium text-indigo-900">
                   Step 2: Click the Google button below to verify and finish connecting Google.
                 </p>
                 <GoogleIdentityButton
@@ -153,7 +238,7 @@ export function AccountLinking() {
           ) : null}
 
           {!methods.password && methods.google ? (
-            <div className="mt-6 border-t border-slate-200 pt-6">
+            <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50/70 p-5 sm:p-6">
               <h3>Add a password</h3>
               <p className="mt-1 text-sm text-slate-600">
                 Step 1: Create the MyFitnessPlan password you want to use for future logins.
@@ -186,8 +271,8 @@ export function AccountLinking() {
                   />
                 </div>
               </div>
-              <div className="mt-5 rounded-lg border border-blue-200 bg-blue-50 p-4">
-                <p className="text-sm font-medium text-blue-900">
+              <div className="mt-5 rounded-xl border border-indigo-200 bg-indigo-50 p-4">
+                <p className="text-sm font-medium text-indigo-900">
                   Step 2: Click “Continue as…” below. That Google button verifies your account and
                   finishes linking the password.
                 </p>

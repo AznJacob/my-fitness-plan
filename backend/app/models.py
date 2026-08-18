@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
@@ -11,6 +12,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     LargeBinary,
+    Numeric,
     SmallInteger,
     String,
     UniqueConstraint,
@@ -64,7 +66,7 @@ class User(TimestampMixin, Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
-    profile: Mapped[Profile | None] = relationship(
+    account_details: Mapped[AccountDetails | None] = relationship(
         back_populates="user",
         cascade="all, delete-orphan",
         passive_deletes=True,
@@ -178,36 +180,18 @@ class UserSession(TimestampMixin, Base):
     user: Mapped[User] = relationship(back_populates="sessions")
 
 
-class Profile(TimestampMixin, Base):
-    """A user's current general-wellness planning preferences."""
+class AccountDetails(TimestampMixin, Base):
+    """Private account attributes that persist independently of plan requests."""
 
-    __tablename__ = "profiles"
+    __tablename__ = "account_details"
     __table_args__ = (
         CheckConstraint(
-            "fitness_goal IN "
-            "('general_fitness', 'strength', 'muscle_gain', 'endurance', 'weight_management')",
-            name="ck_profiles_fitness_goal",
+            "height_cm IS NULL OR height_cm BETWEEN 50 AND 260",
+            name="ck_account_details_height_cm",
         ),
         CheckConstraint(
-            "experience_level IN ('beginner', 'intermediate', 'advanced')",
-            name="ck_profiles_experience_level",
-        ),
-        CheckConstraint(
-            "days_per_week BETWEEN 1 AND 7",
-            name="ck_profiles_days_per_week",
-        ),
-        CheckConstraint(
-            "session_minutes BETWEEN 10 AND 180",
-            name="ck_profiles_session_minutes",
-        ),
-        CheckConstraint("jsonb_typeof(equipment) = 'array'", name="ck_profiles_equipment_array"),
-        CheckConstraint(
-            "jsonb_typeof(dietary_preferences) = 'array'",
-            name="ck_profiles_dietary_preferences_array",
-        ),
-        CheckConstraint(
-            "jsonb_typeof(wellness_constraints) = 'array'",
-            name="ck_profiles_wellness_constraints_array",
+            "weight_kg IS NULL OR weight_kg BETWEEN 20 AND 400",
+            name="ck_account_details_weight_kg",
         ),
     )
 
@@ -215,31 +199,11 @@ class Profile(TimestampMixin, Base):
         ForeignKey("users.id", ondelete="CASCADE"),
         primary_key=True,
     )
-    display_name: Mapped[str | None] = mapped_column(String(100))
-    fitness_goal: Mapped[str] = mapped_column(String(30), nullable=False)
-    experience_level: Mapped[str] = mapped_column(String(20), nullable=False)
-    days_per_week: Mapped[int] = mapped_column(SmallInteger, nullable=False)
-    session_minutes: Mapped[int] = mapped_column(SmallInteger, nullable=False)
-    equipment: Mapped[list[str]] = mapped_column(
-        JSONB,
-        nullable=False,
-        default=list,
-        server_default=text("'[]'::jsonb"),
-    )
-    dietary_preferences: Mapped[list[str]] = mapped_column(
-        JSONB,
-        nullable=False,
-        default=list,
-        server_default=text("'[]'::jsonb"),
-    )
-    wellness_constraints: Mapped[list[str]] = mapped_column(
-        JSONB,
-        nullable=False,
-        default=list,
-        server_default=text("'[]'::jsonb"),
-    )
+    username: Mapped[str | None] = mapped_column(String(100))
+    height_cm: Mapped[Decimal | None] = mapped_column(Numeric(5, 1))
+    weight_kg: Mapped[Decimal | None] = mapped_column(Numeric(5, 1))
 
-    user: Mapped[User] = relationship(back_populates="profile")
+    user: Mapped[User] = relationship(back_populates="account_details")
 
 
 class Plan(TimestampMixin, Base):

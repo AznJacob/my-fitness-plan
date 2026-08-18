@@ -7,8 +7,8 @@ from app.models import Base
 def test_initial_schema_registers_expected_tables() -> None:
     assert set(Base.metadata.tables) == {
         "authentication_identities",
+        "account_details",
         "plans",
-        "profiles",
         "sessions",
         "users",
     }
@@ -23,7 +23,7 @@ def test_initial_schema_compiles_for_postgresql() -> None:
 
 
 def test_ownership_foreign_keys_delete_dependent_data() -> None:
-    for table_name in ("authentication_identities", "profiles", "plans", "sessions"):
+    for table_name in ("authentication_identities", "account_details", "plans", "sessions"):
         foreign_keys = Base.metadata.tables[table_name].foreign_keys
         assert len(foreign_keys) == 1
         foreign_key = next(iter(foreign_keys))

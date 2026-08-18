@@ -27,6 +27,11 @@ class LinkPasswordRequest(BaseModel):
     google_id_token: str = Field(min_length=1, max_length=8192, repr=False)
 
 
+class ChangePasswordRequest(BaseModel):
+    current_password: str = Field(repr=False)
+    new_password: str = Field(repr=False)
+
+
 class UserResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

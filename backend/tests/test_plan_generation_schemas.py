@@ -3,9 +3,9 @@ from copy import deepcopy
 import pytest
 from pydantic import ValidationError
 
+from app.plan_generation.preferences import PlanningPreferences as ProfileInput
 from app.plan_generation.schemas import ClaudePlanRequest, GeneratedPlan
-from app.profile.schemas import ProfileInput
-from app.wellness.service import calculate_profile_wellness
+from app.wellness.service import calculate_preferences_wellness as calculate_profile_wellness
 
 
 def valid_profile() -> ProfileInput:

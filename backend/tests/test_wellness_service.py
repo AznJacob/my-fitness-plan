@@ -1,16 +1,20 @@
 import pytest
 
-from app.profile.schemas import ProfileInput
+from app.plan_generation.preferences import PlanningPreferences as ProfileInput
 from app.wellness.schemas import (
     WellnessCalculationInput,
     WellnessSafetyInput,
     WellnessSafetyIssueCode,
 )
 from app.wellness.service import (
-    assess_profile_safety,
+    assess_preferences_safety as assess_profile_safety,
+)
+from app.wellness.service import (
     assess_wellness_safety,
-    calculate_profile_wellness,
     calculate_wellness,
+)
+from app.wellness.service import (
+    calculate_preferences_wellness as calculate_profile_wellness,
 )
 
 

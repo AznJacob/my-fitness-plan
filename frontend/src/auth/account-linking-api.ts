@@ -28,3 +28,10 @@ export async function linkPassword(
   });
   return (await response.json()) as ConnectedMethods;
 }
+
+export async function changePassword(currentPassword: string, newPassword: string): Promise<void> {
+  await csrfProtectedMutation("/auth/password", "POST", {
+    current_password: currentPassword,
+    new_password: newPassword,
+  });
+}

@@ -101,9 +101,11 @@ def archive_plan(database_session: Session, user: User, plan_id: UUID) -> Persis
 
 
 def plan_summary(plan: Plan) -> PlanSummary:
+    snapshot = PlanProfileSnapshot.model_validate(plan.profile_snapshot)
     return PlanSummary(
         id=plan.id,
         title=plan.title,
+        fitness_goal=snapshot.profile.fitness_goal,
         status=PlanStatus(plan.status),
         created_at=plan.created_at,
         updated_at=plan.updated_at,

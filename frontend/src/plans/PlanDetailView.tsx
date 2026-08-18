@@ -119,21 +119,19 @@ export function PlanDetailView({ planId, onBack }: { planId: string; onBack: () 
 
   return (
     <div className="space-y-6">
-      <section aria-labelledby="plan-detail-heading">
-        <button
-          type="button"
-          className="border border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
-          onClick={onBack}
-        >
+      <section aria-labelledby="plan-detail-heading" className="page-hero">
+        <button type="button" className="button-secondary" onClick={onBack}>
           Back to plan history
         </button>
         <div className="mt-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <div className="flex flex-wrap items-center gap-3">
-              <h2 id="plan-detail-heading">{plan.title}</h2>
+              <h1 id="plan-detail-heading" className="text-3xl font-black tracking-tight">
+                {plan.title}
+              </h1>
               <PlanStatusBadge status={plan.status} />
             </div>
-            <p className="mt-2 text-sm text-slate-600">
+            <p className="mt-2 text-sm text-slate-500">
               Saved {new Date(plan.created_at).toLocaleString()}
             </p>
           </div>
@@ -141,6 +139,7 @@ export function PlanDetailView({ planId, onBack }: { planId: string; onBack: () 
             {plan.status === "inactive" ? (
               <button
                 type="button"
+                className="bg-gradient-to-r from-lime-300 to-emerald-400 text-slate-950 hover:from-lime-200 hover:to-emerald-300"
                 disabled={pendingAction !== null}
                 onClick={() => void handleActivate()}
               >
@@ -172,34 +171,37 @@ export function PlanDetailView({ planId, onBack }: { planId: string; onBack: () 
       </section>
 
       <section aria-labelledby="plan-snapshot-heading">
-        <h2 id="plan-snapshot-heading">Generation snapshot</h2>
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-indigo-600">Plan inputs</p>
+        <h2 id="plan-snapshot-heading" className="mt-2">
+          Generation snapshot
+        </h2>
         <p className="mt-2 text-sm text-slate-600">
           These are the saved inputs and calculated schedule used to create this plan.
         </p>
         <dl className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <div className="rounded-lg bg-slate-50 p-3">
+          <div className="rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200/70">
             <dt className="text-xs font-semibold uppercase text-slate-500">Goal</dt>
             <dd className="mt-1 text-sm">{profile.fitness_goal.replaceAll("_", " ")}</dd>
           </div>
-          <div className="rounded-lg bg-slate-50 p-3">
+          <div className="rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200/70">
             <dt className="text-xs font-semibold uppercase text-slate-500">Experience</dt>
             <dd className="mt-1 text-sm">{profile.experience_level}</dd>
           </div>
-          <div className="rounded-lg bg-slate-50 p-3">
+          <div className="rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200/70">
             <dt className="text-xs font-semibold uppercase text-slate-500">Schedule</dt>
             <dd className="mt-1 text-sm">
               {calculations.sessions_per_week} sessions · {calculations.minutes_per_session} minutes
             </dd>
           </div>
-          <div className="rounded-lg bg-slate-50 p-3">
+          <div className="rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200/70">
             <dt className="text-xs font-semibold uppercase text-slate-500">Equipment</dt>
             <dd className="mt-1 text-sm">{listValue(profile.equipment)}</dd>
           </div>
-          <div className="rounded-lg bg-slate-50 p-3">
+          <div className="rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200/70">
             <dt className="text-xs font-semibold uppercase text-slate-500">Diet</dt>
             <dd className="mt-1 text-sm">{listValue(profile.dietary_preferences)}</dd>
           </div>
-          <div className="rounded-lg bg-slate-50 p-3">
+          <div className="rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200/70">
             <dt className="text-xs font-semibold uppercase text-slate-500">Constraints</dt>
             <dd className="mt-1 text-sm">{listValue(profile.wellness_constraints)}</dd>
           </div>
@@ -208,7 +210,7 @@ export function PlanDetailView({ planId, onBack }: { planId: string; onBack: () 
 
       <GeneratedPlanDisplay plan={plan} />
 
-      <p className="rounded-lg border border-slate-200 bg-white p-4 text-xs leading-5 text-slate-500">
+      <p className="rounded-xl border border-slate-200 bg-white p-4 text-xs leading-5 text-slate-500 shadow-sm">
         MyFitnessPlan provides general wellness information, not medical advice. Consult an
         appropriately qualified professional for medical care, injury treatment, rehabilitation, or
         individualized clinical nutrition advice.

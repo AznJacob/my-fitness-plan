@@ -6,7 +6,7 @@ the protected plan-generation service will consume these functions directly in m
 
 ## Supported inputs and calculations
 
-The saved profile currently contains two numeric inputs suitable for exact calculations:
+Each generation request contains two numeric inputs suitable for exact calculations:
 
 | Input | Unit | Accepted range | Meaning |
 | --- | --- | --- | --- |

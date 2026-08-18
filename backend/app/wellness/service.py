@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 import unicodedata
 
-from app.profile.schemas import ProfileInput
+from app.plan_generation.preferences import PlanningPreferences
 from app.wellness.schemas import (
     MAX_SESSION_MINUTES,
     MIN_SESSION_MINUTES,
@@ -42,12 +42,14 @@ def calculate_wellness(payload: WellnessCalculationInput) -> WellnessCalculation
     )
 
 
-def calculate_profile_wellness(profile: ProfileInput) -> WellnessCalculationResult:
-    """Adapt a validated saved profile to the calculation-only contract."""
+def calculate_preferences_wellness(
+    preferences: PlanningPreferences,
+) -> WellnessCalculationResult:
+    """Adapt validated request preferences to the calculation-only contract."""
     return calculate_wellness(
         WellnessCalculationInput(
-            days_per_week=profile.days_per_week,
-            session_minutes=profile.session_minutes,
+            days_per_week=preferences.days_per_week,
+            session_minutes=preferences.session_minutes,
         )
     )
 
@@ -84,12 +86,12 @@ def assess_wellness_safety(payload: WellnessSafetyInput) -> WellnessSafetyResult
     return WellnessSafetyResult(is_eligible=not issues, issues=tuple(issues))
 
 
-def assess_profile_safety(profile: ProfileInput) -> WellnessSafetyResult:
-    """Adapt bounded profile fields to the safety-only contract."""
+def assess_preferences_safety(preferences: PlanningPreferences) -> WellnessSafetyResult:
+    """Adapt bounded request preferences to the safety-only contract."""
     return assess_wellness_safety(
         WellnessSafetyInput(
-            session_minutes=profile.session_minutes,
-            wellness_constraints=tuple(profile.wellness_constraints),
+            session_minutes=preferences.session_minutes,
+            wellness_constraints=tuple(preferences.wellness_constraints),
         )
     )
 

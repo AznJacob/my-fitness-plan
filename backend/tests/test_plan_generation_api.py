@@ -13,8 +13,8 @@ from app import main
 from app.models import Plan
 from app.plan_generation import workflow
 from app.plan_generation.errors import PlanGenerationError, PlanGenerationFailureCode
+from app.plan_generation.preferences import PlanningPreferences as ProfileInput
 from app.plan_generation.schemas import ClaudePlanRequest, GeneratedPlan
-from app.profile.schemas import ProfileInput
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 FRONTEND_ORIGIN = "http://localhost:5173"
@@ -51,7 +51,6 @@ def register(client: TestClient, email: str = "person@example.com") -> None:
 
 def valid_profile(**overrides: object) -> dict[str, object]:
     profile: dict[str, object] = {
-        "display_name": "Jordan",
         "fitness_goal": "general_fitness",
         "experience_level": "beginner",
         "days_per_week": 3,
@@ -102,21 +101,11 @@ def valid_generated_plan() -> GeneratedPlan:
     )
 
 
-def save_profile(client: TestClient, profile: dict[str, object] | None = None) -> None:
-    response = client.put(
-        "/profile",
-        json=profile or valid_profile(),
-        headers=csrf_headers(client),
-    )
-    assert response.status_code == 200
-
-
 def test_generation_requires_authentication_and_csrf(generation_client: TestClient) -> None:
-    assert generation_client.post("/plans/generate").status_code == 401
+    assert generation_client.post("/plans/generate", json=valid_profile()).status_code == 401
     register(generation_client)
-    save_profile(generation_client)
 
-    response = generation_client.post("/plans/generate")
+    response = generation_client.post("/plans/generate", json=valid_profile())
 
     assert response.status_code == 403
 
@@ -126,7 +115,6 @@ def test_generation_uses_authenticated_profile_and_calculations(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     register(generation_client)
-    save_profile(generation_client)
     captured_request: ClaudePlanRequest | None = None
 
     def generate(request: ClaudePlanRequest, _settings: object) -> GeneratedPlan:
@@ -136,7 +124,9 @@ def test_generation_uses_authenticated_profile_and_calculations(
 
     monkeypatch.setattr(workflow, "generate_structured_plan", generate)
 
-    response = generation_client.post("/plans/generate", headers=csrf_headers(generation_client))
+    response = generation_client.post(
+        "/plans/generate", json=valid_profile(), headers=csrf_headers(generation_client)
+    )
 
     assert response.status_code == 201
     response_body = response.json()
@@ -165,31 +155,36 @@ def test_generation_uses_authenticated_profile_and_calculations(
         assert stored_plans[0].profile_snapshot == response_body["profile_snapshot"]
 
 
-def test_missing_profile_is_explicit_and_cannot_select_another_users_profile(
+def test_each_user_generates_from_their_own_request_preferences(
     generation_client: TestClient,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     register(generation_client, "first@example.com")
-    save_profile(generation_client)
     assert (
         generation_client.post("/auth/logout", headers=csrf_headers(generation_client)).status_code
         == 204
     )
     register(generation_client, "second@example.com")
-    called = False
+    captured_request: ClaudePlanRequest | None = None
 
-    def should_not_generate(_request: ClaudePlanRequest, _settings: object) -> GeneratedPlan:
-        nonlocal called
-        called = True
+    def generate(request: ClaudePlanRequest, _settings: object) -> GeneratedPlan:
+        nonlocal captured_request
+        captured_request = request
         return valid_generated_plan()
 
-    monkeypatch.setattr(workflow, "generate_structured_plan", should_not_generate)
+    monkeypatch.setattr(workflow, "generate_structured_plan", generate)
 
-    response = generation_client.post("/plans/generate", headers=csrf_headers(generation_client))
+    second_user_preferences = valid_profile(equipment=["Resistance bands"])
+    response = generation_client.post(
+        "/plans/generate",
+        json=second_user_preferences,
+        headers=csrf_headers(generation_client),
+    )
 
-    assert response.status_code == 404
-    assert response.json()["detail"]["code"] == "missing_profile"
-    assert called is False
+    assert response.status_code == 201
+    assert captured_request is not None
+    assert captured_request.profile_data.days_per_week == 3
+    assert captured_request.profile_data.equipment == ["Resistance bands"]
 
 
 def test_unsafe_profile_is_rejected_before_provider_call(
@@ -197,10 +192,6 @@ def test_unsafe_profile_is_rejected_before_provider_call(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     register(generation_client)
-    save_profile(
-        generation_client,
-        valid_profile(wellness_constraints=["I need rehabilitation after an injury"]),
-    )
     called = False
 
     def should_not_generate(_request: ClaudePlanRequest, _settings: object) -> GeneratedPlan:
@@ -210,12 +201,16 @@ def test_unsafe_profile_is_rejected_before_provider_call(
 
     monkeypatch.setattr(workflow, "generate_structured_plan", should_not_generate)
 
-    response = generation_client.post("/plans/generate", headers=csrf_headers(generation_client))
+    response = generation_client.post(
+        "/plans/generate",
+        json=valid_profile(wellness_constraints=["I need rehabilitation after an injury"]),
+        headers=csrf_headers(generation_client),
+    )
 
     assert response.status_code == 422
     assert response.json()["detail"] == {
         "code": "unsafe_profile",
-        "message": "The saved profile is outside MyFitnessPlan's general-wellness scope.",
+        "message": "The planning preferences are outside MyFitnessPlan's general-wellness scope.",
         "issues": ["medical_or_rehabilitation_request"],
     }
     assert called is False
@@ -238,14 +233,15 @@ def test_provider_failures_are_mapped_to_explicit_safe_api_errors(
     expected_code: str,
 ) -> None:
     register(generation_client)
-    save_profile(generation_client)
 
     def fail(_request: ClaudePlanRequest, _settings: object) -> GeneratedPlan:
         raise PlanGenerationError(failure, "Safe provider failure message.")
 
     monkeypatch.setattr(workflow, "generate_structured_plan", fail)
 
-    response = generation_client.post("/plans/generate", headers=csrf_headers(generation_client))
+    response = generation_client.post(
+        "/plans/generate", json=valid_profile(), headers=csrf_headers(generation_client)
+    )
 
     assert response.status_code == expected_status
     assert response.json()["detail"] == {
@@ -259,12 +255,13 @@ def test_unsafe_generated_content_is_rejected(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     register(generation_client)
-    save_profile(generation_client)
     unsafe_plan = valid_generated_plan().model_copy(deep=True)
     unsafe_plan.nutrition_plan.daily_guidance = "Eat exactly 1,200 calories every day."
     monkeypatch.setattr(workflow, "generate_structured_plan", lambda *_args: unsafe_plan)
 
-    response = generation_client.post("/plans/generate", headers=csrf_headers(generation_client))
+    response = generation_client.post(
+        "/plans/generate", json=valid_profile(), headers=csrf_headers(generation_client)
+    )
 
     assert response.status_code == 502
     assert response.json()["detail"]["code"] == "unsafe_model_output"
@@ -275,35 +272,42 @@ def test_unsafe_generated_content_is_rejected(
         assert database_session.scalars(select(Plan)).all() == []
 
 
-def test_plan_history_details_and_profile_snapshot_survive_profile_changes(
+def test_plan_snapshot_survives_later_generation_requests(
     generation_client: TestClient,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     register(generation_client)
     original_profile = valid_profile()
-    save_profile(generation_client, original_profile)
     monkeypatch.setattr(workflow, "generate_structured_plan", lambda *_args: valid_generated_plan())
 
     create_response = generation_client.post(
-        "/plans/generate", headers=csrf_headers(generation_client)
+        "/plans/generate", json=original_profile, headers=csrf_headers(generation_client)
     )
     plan_id = create_response.json()["id"]
-    save_profile(generation_client, valid_profile(days_per_week=4, session_minutes=30))
+    assert (
+        generation_client.post(
+            "/plans/generate",
+            json=valid_profile(equipment=["Resistance bands"]),
+            headers=csrf_headers(generation_client),
+        ).status_code
+        == 201
+    )
 
     history_response = generation_client.get("/plans")
     detail_response = generation_client.get(f"/plans/{plan_id}")
 
     assert history_response.status_code == 200
-    assert history_response.json() == [
-        {
-            "id": plan_id,
-            "title": valid_generated_plan().title,
-            "status": "inactive",
-            "created_at": create_response.json()["created_at"],
-            "updated_at": create_response.json()["updated_at"],
-            "archived_at": None,
-        }
-    ]
+    assert len(history_response.json()) == 2
+    original_summary = next(plan for plan in history_response.json() if plan["id"] == plan_id)
+    assert original_summary == {
+        "id": plan_id,
+        "title": valid_generated_plan().title,
+        "fitness_goal": "general_fitness",
+        "status": "inactive",
+        "created_at": create_response.json()["created_at"],
+        "updated_at": create_response.json()["updated_at"],
+        "archived_at": None,
+    }
     assert detail_response.status_code == 200
     assert detail_response.json()["profile_snapshot"]["profile"] == original_profile
     assert (
@@ -317,13 +321,12 @@ def test_selecting_active_plan_and_archiving_preserve_lifecycle_invariants(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     register(generation_client)
-    save_profile(generation_client)
     monkeypatch.setattr(workflow, "generate_structured_plan", lambda *_args: valid_generated_plan())
     first_id = generation_client.post(
-        "/plans/generate", headers=csrf_headers(generation_client)
+        "/plans/generate", json=valid_profile(), headers=csrf_headers(generation_client)
     ).json()["id"]
     second_id = generation_client.post(
-        "/plans/generate", headers=csrf_headers(generation_client)
+        "/plans/generate", json=valid_profile(), headers=csrf_headers(generation_client)
     ).json()["id"]
 
     first_activation = generation_client.post(
@@ -361,10 +364,9 @@ def test_plan_lifecycle_ownership_is_derived_from_session(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     register(generation_client, "first@example.com")
-    save_profile(generation_client)
     monkeypatch.setattr(workflow, "generate_structured_plan", lambda *_args: valid_generated_plan())
     plan_id = generation_client.post(
-        "/plans/generate", headers=csrf_headers(generation_client)
+        "/plans/generate", json=valid_profile(), headers=csrf_headers(generation_client)
     ).json()["id"]
     assert (
         generation_client.post("/auth/logout", headers=csrf_headers(generation_client)).status_code
@@ -393,10 +395,9 @@ def test_plan_lifecycle_mutations_require_session_bound_csrf(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     register(generation_client)
-    save_profile(generation_client)
     monkeypatch.setattr(workflow, "generate_structured_plan", lambda *_args: valid_generated_plan())
     plan_id = generation_client.post(
-        "/plans/generate", headers=csrf_headers(generation_client)
+        "/plans/generate", json=valid_profile(), headers=csrf_headers(generation_client)
     ).json()["id"]
 
     assert generation_client.post(f"/plans/{plan_id}/activate").status_code == 403

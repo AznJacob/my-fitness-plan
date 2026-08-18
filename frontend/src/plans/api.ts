@@ -1,6 +1,5 @@
 import { apiRequest, csrfProtectedMutation } from "../auth/api";
-import type { GeneratedPlan } from "../plan-generation/api";
-import type { Profile } from "../profile/api";
+import type { FitnessGoal, GeneratedPlan, PlanningPreferences } from "../plan-generation/api";
 
 export type PlanStatus = "inactive" | "active" | "archived";
 
@@ -13,13 +12,14 @@ export interface WellnessCalculationResult {
 }
 
 export interface PlanProfileSnapshot {
-  profile: Profile;
+  profile: PlanningPreferences;
   calculated_values: WellnessCalculationResult;
 }
 
 export interface PlanSummary {
   id: string;
   title: string;
+  fitness_goal: FitnessGoal;
   status: PlanStatus;
   created_at: string;
   updated_at: string;

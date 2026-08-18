@@ -23,7 +23,6 @@ class PlanGenerationError(RuntimeError):
 
 
 class PlanWorkflowFailureCode(StrEnum):
-    MISSING_PROFILE = "missing_profile"
     UNSAFE_PROFILE = "unsafe_profile"
     UNSAFE_MODEL_OUTPUT = "unsafe_model_output"
 

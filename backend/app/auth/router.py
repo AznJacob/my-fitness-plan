@@ -19,6 +19,7 @@ from app.auth.google import (
     verify_google_id_token,
 )
 from app.auth.schemas import (
+    ChangePasswordRequest,
     ConnectedMethodsResponse,
     GoogleLoginRequest,
     LinkGoogleRequest,
@@ -36,6 +37,7 @@ from app.auth.service import (
     InvalidPasswordError,
     ReauthenticationFailedError,
     RegistrationConflictError,
+    change_password_identity,
     get_connected_methods,
     link_google_identity,
     link_password_identity,
@@ -271,3 +273,25 @@ def link_password(
             detail="Unable to connect that sign-in method.",
         ) from error
     return ConnectedMethodsResponse(password=True, google=True)
+
+
+@router.post("/password", status_code=status.HTTP_204_NO_CONTENT)
+def change_password(
+    payload: ChangePasswordRequest,
+    database_session: DatabaseSession,
+    user_session: AuthenticatedCsrfSession,
+) -> None:
+    try:
+        change_password_identity(
+            database_session,
+            user_session.user,
+            payload.current_password,
+            payload.new_password,
+        )
+    except InvalidPasswordError as error:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(error))
+    except ReauthenticationFailedError as error:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Current password is incorrect.",
+        ) from error
